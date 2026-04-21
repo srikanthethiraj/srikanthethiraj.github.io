@@ -1,6 +1,38 @@
 [
   
     {
+      "title"    : "Build an AI Support Assistant with Bedrock Guardrails and Governance",
+      "category" : "",
+      "tags"     : "AI, AWS, Python, Bedrock, Guardrails, Comprehend, DynamoDB",
+      "url"      : "/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance",
+      "date"     : "April 28, 2026"
+    } ,
+  
+    {
+      "title"    : "Optimize RAG Search with Hybrid Retrieval and Reranking on AWS",
+      "category" : "",
+      "tags"     : "AI, AWS, Python, Bedrock, OpenSearch, RAG, Embeddings, Search",
+      "url"      : "/optimize-rag-search-with-hybrid-retrieval-and-reranking-on-aws",
+      "date"     : "April 24, 2026"
+    } ,
+  
+    {
+      "title"    : "Build a RAG Knowledge Base with Amazon Bedrock and OpenSearch",
+      "category" : "",
+      "tags"     : "AI, AWS, Python, Bedrock, OpenSearch, RAG, Embeddings, DynamoDB",
+      "url"      : "/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch",
+      "date"     : "April 22, 2026"
+    } ,
+  
+    {
+      "title"    : "Build a Customer Feedback Pipeline with Amazon Bedrock",
+      "category" : "",
+      "tags"     : "AI, AWS, Python, Bedrock, Comprehend, Textract, Transcribe",
+      "url"      : "/build-a-customer-feedback-pipeline-with-amazon-bedrock",
+      "date"     : "April 20, 2026"
+    } ,
+  
+    {
       "title"    : "Build a Financial Services AI Assistant with Amazon Bedrock",
       "category" : "",
       "tags"     : "AI, AWS, Python, Bedrock, Lambda, StepFunctions",

@@ -3,7 +3,7 @@ layout: post
 title: "Build a Financial Services AI Assistant with Amazon Bedrock"
 tags: [AI, AWS, Python, Bedrock, Lambda, StepFunctions]
 featured_image_thumbnail:
-featured_image: assets/images/posts/2019/desk.jpg
+featured_image: assets/images/posts/2026/article-2-hero.jpeg
 featured: false
 hidden: false
 ---
@@ -156,7 +156,7 @@ You'll see the full flow — benchmark, select, query, and circuit breaker demo 
 
 ## What's Next
 
-This is Part 2 of a six-part series. Each project builds on the last:
+This is Part 2 of an ongoing series. Each project builds on the last:
 
 - **Part 1** — [Insurance Claim Processor](https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock): Bedrock basics, prompt templates, simple RAG
 - **Part 2** — Financial Services AI Assistant (this post): benchmarking, circuit breakers, cross-region resilience
@@ -164,6 +164,7 @@ This is Part 2 of a six-part series. Each project builds on the last:
 - **Part 4** — Knowledge Base RAG System: vector stores, embeddings, document chunking
 - **Part 5** — Advanced Search & Retrieval: hybrid search, reranking, query expansion
 - **Part 6** — AI Support Assistant with Governance: guardrails, prompt management, conversation flows
+- **Part 7+** — Agentic AI, enterprise integration, AI safety, optimization, testing & evaluation
 
 In Part 3, we move beyond text-only processing and build a pipeline that handles text, images, audio, and surveys — feeding them all into foundation models.
 

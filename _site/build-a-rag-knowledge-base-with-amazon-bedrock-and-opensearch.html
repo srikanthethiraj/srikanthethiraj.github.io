@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Build a RAG Knowledge Base with Amazon Bedrock and OpenSearch | Srikanth Ethiraj</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Build a RAG Knowledge Base with Amazon Bedrock and OpenSearch" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="In Part 3, we built a pipeline that processes text, images, audio, and surveys. All of it fed into a single Bedrock call for analysis. But the knowledge behind that analysis was baked into the prompt — no persistent memory, no document retrieval." />
+<meta property="og:description" content="In Part 3, we built a pipeline that processes text, images, audio, and surveys. All of it fed into a single Bedrock call for analysis. But the knowledge behind that analysis was baked into the prompt — no persistent memory, no document retrieval." />
+<link rel="canonical" href="http://localhost:4000/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch" />
+<meta property="og:url" content="http://localhost:4000/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch" />
+<meta property="og:site_name" content="Srikanth Ethiraj" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-22T00:00:00-05:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Build a RAG Knowledge Base with Amazon Bedrock and OpenSearch" />
+<meta name="twitter:site" content="@" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-04-22T00:00:00-05:00","datePublished":"2026-04-22T00:00:00-05:00","description":"In Part 3, we built a pipeline that processes text, images, audio, and surveys. All of it fed into a single Bedrock call for analysis. But the knowledge behind that analysis was baked into the prompt — no persistent memory, no document retrieval.","headline":"Build a RAG Knowledge Base with Amazon Bedrock and OpenSearch","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch"},"url":"http://localhost:4000/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch"}</script>
+<!-- End Jekyll SEO tag -->
+
+    
+
+    <!-- Site Favicon -->
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/initials.png" type="image/png" />
+
+    <!-- Font Embed Code -->
+    <link href="https://fonts.googleapis.com/css?family=Crimson+Text:400,400i,600,600i|Karla:400,400i,700,700i"
+        rel="stylesheet">
+
+    <!-- CSS Styles -->
+    <link href="/assets/css/style.css" rel="stylesheet">
+</head>
+
+
+
+<body class="layout-post">
+    <div id="page" class="site">
+        <header id="masthead" class="site-header">
+    <div class="site-header-wrap">
+        <div class="site-header-inside">
+
+            <div class="site-branding">
+                
+                <p class="profile">
+                    <a href="/">
+                        <img src="/assets/images/authorimage.jpg" alt="'s Picture"
+                            class="avatar" />
+                    </a>
+                </p>
+                <div class="site-identity">
+                    
+                    <h1 class="site-title">
+                        <a href="/">Srikanth Ethiraj</a>
+                    </h1>
+                    
+                    
+                    <p class="site-description">Building AI applications on AWS — one project at a time.</p>
+                    
+                </div><!-- .site-identity -->
+                
+                <button id="menu-toggle" class="menu-toggle"><span class="screen-reader-text">Main Menu</span><span
+                        class="icon-menu" aria-hidden="true"></span></button>
+            </div><!-- .site-branding -->
+
+            <nav id="main-navigation" class="site-navigation" aria-label="Main Navigation">
+                <div class="site-nav-wrap">
+                    <div class="site-nav-inside">
+                    <ul class="menu">
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/">Home</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/about">About</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/contact">Contact Me</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/search">Search</a></li>
+                        
+                    </ul>
+                    <p class="social-links">
+    
+    <a href="https://twitter.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+    <a href="https://github.com/srikantheee84" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+    
+    
+    <a href="https://www.instagram.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    <a href="https://www.pinterest.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M496 256c0 137-111 248-248 248-25.6 0-50.2-3.9-73.4-11.1 10.1-16.5 25.2-43.5 30.8-65 3-11.6 15.4-59 15.4-59 8.1 15.4 31.7 28.5 56.8 28.5 74.8 0 128.7-68.8 128.7-154.3 0-81.9-66.9-143.2-152.9-143.2-107 0-163.9 71.8-163.9 150.1 0 36.4 19.4 81.7 50.3 96.1 4.7 2.2 7.2 1.2 8.3-3.3.8-3.4 5-20.3 6.9-28.1.6-2.5.3-4.7-1.7-7.1-10.1-12.5-18.3-35.3-18.3-56.6 0-54.7 41.4-107.6 112-107.6 60.9 0 103.6 41.5 103.6 100.9 0 67.1-33.9 113.6-78 113.6-24.3 0-42.6-20.1-36.7-44.8 7-29.5 20.5-61.3 20.5-82.6 0-19-10.2-34.9-31.4-34.9-24.9 0-44.9 25.7-44.9 60.2 0 22 7.4 36.8 7.4 36.8s-24.5 103.8-29 123.2c-5 21.4-3 51.6-.9 71.2C65.4 450.9 0 361.1 0 256 0 119 111 8 248 8s248 111 248 248z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    <a href="https://www.linkedin.com/in/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+</p>
+                    </div><!-- .site-nav-inside -->
+                </div><!-- .site-nav-wrap -->
+            </nav><!-- .site-navigation -->
+
+        </div><!-- .site-header-inside -->
+    </div><!-- .site-header-wrap -->
+</header><!-- .site-header -->
+        <div id="content" class="site-content fadeInDown delay_075s">
+            <div class="inner-wide">
+                <main id="main" class="site-main">
+    <article class="post-full inner">
+        <header class="post-header">
+            <div class="post-meta">
+                <time class="post-date" datetime=" 2026-04-22">
+                    April 22, 2026
+                </time>
+            </div><!-- .post-meta -->
+            <h1 class="post-title">Build a RAG Knowledge Base with Amazon Bedrock and OpenSearch</h1>
+            
+            <p class="post-tags">
+                <a href="/tags/index.html#AI"
+                    rel="tag">AI</a>
+                <a href="/tags/index.html#AWS"
+                    rel="tag">AWS</a>
+                <a href="/tags/index.html#Python"
+                    rel="tag">Python</a>
+                <a href="/tags/index.html#Bedrock"
+                    rel="tag">Bedrock</a>
+                <a href="/tags/index.html#OpenSearch"
+                    rel="tag">OpenSearch</a>
+                <a href="/tags/index.html#RAG"
+                    rel="tag">RAG</a>
+                <a href="/tags/index.html#Embeddings"
+                    rel="tag">Embeddings</a>
+                <a href="/tags/index.html#DynamoDB"
+                    rel="tag">DynamoDB</a>
+                
+            </p>
+            
+        </header><!-- .post-header -->
+        
+        <div class="post-thumbnail">
+            <img src="assets/images/posts/2026/article-4-hero.jpeg" alt="Build a RAG Knowledge Base with Amazon Bedrock and OpenSearch">
+        </div>
+        
+        <div class="post-content">
+            <p>In Part 3, we built a pipeline that processes text, images, audio, and surveys. All of it fed into a single Bedrock call for analysis. But the knowledge behind that analysis was baked into the prompt — no persistent memory, no document retrieval.</p>
+
+<p>Your engineering team has hundreds of internal docs — runbooks, architecture decisions, onboarding guides, API references. They’re scattered across Confluence, GitHub wikis, and shared drives. New hires spend weeks finding answers that already exist. Senior engineers answer the same questions over and over.</p>
+
+<p>This project builds an internal knowledge base that actually understands what you’re asking. Not keyword search. Semantic search — where “how do I reduce startup latency?” finds the doc about cold starts, even though it never uses the word “latency.”</p>
+
+<!--more-->
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>Every growing engineering team hits this wall. The knowledge exists, but nobody can find it.</p>
+
+<p>In Part 1, our knowledge base was a Python dictionary:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">kb</span> <span class="o">=</span> <span class="nc">PolicyKnowledgeBase</span><span class="p">()</span>
+<span class="n">kb</span><span class="p">.</span><span class="nf">add_policy</span><span class="p">(</span><span class="sh">"</span><span class="s">POL-2024-78432</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">Coverage: $500,000. Deductible: $1,000.</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Three policies. Exact key match. No semantic understanding. Ask “what’s my deductible?” and it has no idea — because it only matches on policy number, not meaning.</p>
+
+<p>That’s how most internal search works today. Exact keyword matching. If the doc says “cold start” and you search “startup latency,” you get nothing.</p>
+
+<p>Real knowledge bases need to understand what you’re asking, search across thousands of documents, and find the relevant passages — even when the wording doesn’t match exactly. That’s what vector search and embeddings solve.</p>
+
+<h2 id="the-pattern">The Pattern</h2>
+
+<p><strong>Extract → Chunk → Embed → Index → Query → Maintain</strong></p>
+
+<p>Same pattern whether you’re building a documentation assistant, a legal research tool, or a customer support bot. The data sources change. The pipeline doesn’t.</p>
+
+<h2 id="architecture">Architecture</h2>
+
+<p>The system has two paths: ingestion (documents in) and query (answers out).</p>
+
+<p><strong>Ingestion Pipeline</strong> — documents flow through extraction, chunking, and embedding into a vector index. EventBridge + Step Functions handle scheduled refresh.</p>
+
+<p><img src="/assets/images/posts/2026/article-4-ingestion.png" alt="Ingestion Pipeline" /></p>
+
+<p><strong>Query Pipeline</strong> — questions flow through embedding, vector search, and generation. The same Titan Embed V2 model embeds both documents and queries so they live in the same vector space.</p>
+
+<p><img src="/assets/images/posts/2026/article-4-query.png" alt="Query Pipeline" /></p>
+
+<h2 id="how-it-works">How It Works</h2>
+
+<p>Seven steps. Documents flow through extraction, chunking, and embedding into a vector index. Queries flow through embedding, retrieval, and generation.</p>
+
+<p><strong>Extract.</strong> Documents are uploaded to S3. A processor downloads each file, detects the type (PDF, DOCX, TXT), extracts clean text, and computes a SHA-256 checksum. The checksum is the key to change detection — if a document hasn’t changed since last ingestion, we skip it entirely.</p>
+
+<p><strong>Chunk.</strong> Raw text is split into meaningful segments. Not arbitrary 512-character blocks — semantic chunking that respects paragraph boundaries, section headings, and sentence structure. Each chunk is 100-1000 characters, sized for embedding quality without losing context.</p>
+
+<p><strong>Embed.</strong> Amazon Titan Embed V2 converts each chunk into a 1024-dimensional vector. These vectors capture semantic meaning — “Lambda cold starts” and “execution environment initialization latency” end up close together in vector space, even though they share no words.</p>
+
+<p><strong>Index.</strong> Vectors are bulk-indexed into OpenSearch using the HNSW algorithm for approximate nearest-neighbor search. Each document in the index carries the original text, document ID, chunk position, and metadata. This is the searchable knowledge base.</p>
+
+<p><strong>Track.</strong> DynamoDB stores a record for every ingested document: its S3 key, checksum, chunk count, and timestamps. When the pipeline runs again, it checks the checksum first. Changed documents get re-processed. Unchanged ones are skipped. This makes incremental updates fast.</p>
+
+<p><strong>Query.</strong> A user question goes through the same embedding model, producing a query vector. OpenSearch finds the k most similar chunks by cosine similarity. Those chunks become the context for Nova Lite, which generates an answer grounded in the retrieved passages.</p>
+
+<p><strong>Refresh.</strong> EventBridge triggers a Step Functions workflow on a schedule. The workflow scans all tracked documents, re-downloads from S3, checks checksums, and only re-processes what’s changed. No manual intervention needed.</p>
+
+<h2 id="semantic-chunking--why-it-matters">Semantic Chunking — Why It Matters</h2>
+
+<p>Fixed-size chunking is simple: split every 512 characters, overlap by 50. But it cuts through sentences, separates headings from their content, and produces chunks that don’t make sense on their own.</p>
+
+<p>Semantic chunking respects document structure. It splits on double newlines (paragraph boundaries) and section headings. If a section is too long, it falls back to sentence boundaries. If a trailing fragment is too short, it merges into the previous chunk.</p>
+
+<p>The difference shows up in retrieval quality. A query about “how do I deploy to production?” should retrieve the paragraph about the deployment process — not half of that paragraph and half of the database access section.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">chunker</span> <span class="o">=</span> <span class="nf">create_chunker</span><span class="p">(</span><span class="sh">"</span><span class="s">semantic</span><span class="sh">"</span><span class="p">,</span> <span class="n">max_chunk_size</span><span class="o">=</span><span class="mi">800</span><span class="p">)</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunker</span><span class="p">.</span><span class="nf">chunk</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">document_id</span><span class="o">=</span><span class="sh">"</span><span class="s">onboarding-guide</span><span class="sh">"</span><span class="p">)</span>
+<span class="c1"># 4 chunks, each a coherent section of the guide
+</span></code></pre></div></div>
+
+<h2 id="embeddings--turning-text-into-vectors">Embeddings — Turning Text into Vectors</h2>
+
+<p>Amazon Titan Embed V2 is the embedding model. It takes text and returns a 1024-dimensional vector that captures semantic meaning.</p>
+
+<p>Two texts about the same concept produce similar vectors, even with different wording. This is what makes semantic search possible — you don’t need exact keyword matches.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query: "How do I deploy to production?"
+
+Top match (score: 0.5796):
+  "We deploy to production twice a day — 10 AM and 3 PM Central.
+   All changes go through the standard PR review process. At least
+   two approvals are required, and CI must pass. The deployment
+   pipeline runs in three stages: staging, canary, and full rollout."
+
+Second match (score: 0.3386):
+  "Engineering Onboarding Guide — Welcome to the engineering team.
+   This guide covers everything you need to get productive..."
+</code></pre></div></div>
+
+<p>The deployment chunk scores 0.58. The general onboarding overview scores 0.34. Unrelated content (Redis caching, database alerts) scores below 0.20. The embedding model understands what the question is really asking.</p>
+
+<h2 id="change-detection--the-maintenance-problem">Change Detection — The Maintenance Problem</h2>
+
+<p>Ingesting documents once is easy. Keeping them current is the real challenge.</p>
+
+<p>Every document gets a SHA-256 checksum stored in DynamoDB. When the refresh pipeline runs, it downloads each document, computes the new checksum, and compares. If the checksum matches, the document is skipped — no re-chunking, no re-embedding, no re-indexing.</p>
+
+<p>If the checksum differs, the pipeline deletes the old vectors from OpenSearch and re-processes the document from scratch. This handles both content updates and structural changes (like a PDF being reformatted).</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>🔄 CHANGE DETECTION (re-ingest)
+   documents/onboarding-guide.txt: unchanged
+   documents/architecture-decisions.txt: unchanged
+   documents/ops-runbook.txt: unchanged
+</code></pre></div></div>
+
+<p>Three documents checked. Zero re-processed. The pipeline ran in seconds instead of minutes.</p>
+
+<h2 id="rag-query--retrieval-meets-generation">RAG Query — Retrieval Meets Generation</h2>
+
+<p>The query engine combines vector search with foundation model generation. It’s two steps: find the relevant context, then generate an answer using that context.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Q: How do I deploy to production?
+A: We deploy to production twice a day — 10 AM and 3 PM Central.
+   All changes go through the standard PR review process with at
+   least two approvals required. The deployment pipeline runs in
+   three stages: staging, canary (10% traffic for 30 minutes),
+   and full rollout...
+   Sources: 5 chunks, latency: 1322ms
+
+Q: What database do we use and why?
+A: We use PostgreSQL with RDS as the primary database. It supports
+   JSON columns for flexible schemas, has strong indexing capabilities,
+   and the team has deep expertise. Connection pooling uses PgBouncer
+   with a max of 200 connections per instance.
+   Sources: 5 chunks, latency: 713ms
+
+Q: What should I do when API latency spikes?
+A: Check the API Latency dashboard in Datadog to identify which
+   service and endpoint is slow. Then check the Database Connection
+   Pool dashboard — if connections are near the max (200), the
+   database is the bottleneck. Also check Redis Cache Hit Rate.
+   Sources: 5 chunks, latency: 850ms
+</code></pre></div></div>
+
+<p>Every answer is grounded in retrieved passages. The model doesn’t hallucinate — it synthesizes from the context it was given. If the context doesn’t contain the answer, it says so.</p>
+
+<h2 id="what-changed-from-part-1">What Changed from Part 1</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Concept</th>
+      <th>Part 1 (Insurance Claim Processor)</th>
+      <th>Part 4 (This Project)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Knowledge base</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">PolicyKnowledgeBase</code> — Python dict</td>
+      <td>OpenSearch vector store with k-NN</td>
+    </tr>
+    <tr>
+      <td><strong>Embeddings</strong></td>
+      <td>None — exact key match</td>
+      <td>Amazon Titan Embed V2 (1024d)</td>
+    </tr>
+    <tr>
+      <td><strong>Document processing</strong></td>
+      <td>Hardcoded strings</td>
+      <td>PDF, DOCX, TXT extraction</td>
+    </tr>
+    <tr>
+      <td><strong>Chunking</strong></td>
+      <td>None — full document as value</td>
+      <td>Semantic chunking with section awareness</td>
+    </tr>
+    <tr>
+      <td><strong>Change detection</strong></td>
+      <td>None</td>
+      <td>SHA-256 checksums in DynamoDB</td>
+    </tr>
+    <tr>
+      <td><strong>Retrieval</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">dict.get(policy_number)</code></td>
+      <td>Cosine similarity search across all documents</td>
+    </tr>
+    <tr>
+      <td><strong>Maintenance</strong></td>
+      <td>Manual restart</td>
+      <td>Scheduled refresh via EventBridge + Step Functions</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The <code class="language-plaintext highlighter-rouge">PolicyKnowledgeBase</code> from Part 1 was 20 lines of Python. This project is the production version of the same idea — real vector search, real embeddings, real document management.</p>
+
+<h2 id="getting-started">Getting Started</h2>
+
+<p>Prerequisites: Python 3.10+, AWS CLI configured, Bedrock model access for Titan Embed V2 and Nova Lite.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/srikanthethiraj/rag-knowledge-base.git
+<span class="nb">cd </span>rag-knowledge-base
+python3 <span class="nt">-m</span> venv venv
+<span class="nb">source </span>venv/bin/activate
+pip <span class="nb">install</span> <span class="nt">-r</span> requirements.txt
+</code></pre></div></div>
+
+<p>Run the local demo first — it tests extraction, chunking, and embeddings without needing OpenSearch:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python demo.py <span class="nt">--local</span> <span class="nt">--region</span> us-east-1
+</code></pre></div></div>
+
+<p>Use whichever region you have Bedrock model access enabled in.</p>
+
+<p>You’ll see documents extracted, chunks created, embeddings generated, and an in-memory similarity search that proves the vectors work.</p>
+
+<h2 id="deploy-to-aws">Deploy to AWS</h2>
+
+<p>For the full pipeline with OpenSearch and DynamoDB:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./deploy.sh YOUR_BUCKET us-east-1
+</code></pre></div></div>
+
+<p>Wait about 10 minutes for the OpenSearch domain to provision, then run the full demo:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python demo.py <span class="se">\</span>
+  <span class="nt">--bucket</span> YOUR_BUCKET <span class="se">\</span>
+  <span class="nt">--opensearch-host</span> YOUR_OPENSEARCH_ENDPOINT <span class="se">\</span>
+  <span class="nt">--region</span> us-east-1
+</code></pre></div></div>
+
+<p>The full demo ingests all sample documents, runs three RAG queries, and demonstrates change detection on re-ingest.</p>
+
+<h2 id="tear-down">Tear Down</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aws cloudformation delete-stack <span class="nt">--stack-name</span> rag-knowledge-base-prod <span class="nt">--region</span> us-east-1
+</code></pre></div></div>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>This is Part 4 of an ongoing series:</p>
+
+<ul>
+  <li><strong>Part 1</strong> — <a href="https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock">Insurance Claim Processor</a>: Bedrock basics, prompt templates, simple RAG</li>
+  <li><strong>Part 2</strong> — <a href="https://blog.srikanthethiraj.com/build-a-financial-services-ai-assistant-with-amazon-bedrock">Financial Services AI Assistant</a>: benchmarking, circuit breakers, cross-region resilience</li>
+  <li><strong>Part 3</strong> — <a href="https://blog.srikanthethiraj.com/build-a-customer-feedback-pipeline-with-amazon-bedrock">Customer Feedback Pipeline</a>: multimodal data processing</li>
+  <li><strong>Part 4</strong> — RAG Knowledge Base (this post): vector stores, embeddings, document chunking</li>
+  <li><strong>Part 5</strong> — Advanced Search &amp; Retrieval: hybrid search, reranking, query expansion</li>
+  <li><strong>Part 6</strong> — AI Support Assistant with Governance: guardrails, prompt management, conversation flows</li>
+  <li><strong>Part 7+</strong> — Agentic AI, enterprise integration, AI safety, optimization, testing &amp; evaluation</li>
+</ul>
+
+<p>In Part 5, we take this knowledge base and make the search smarter — hybrid search combining vectors and keywords, reranking with Bedrock, query expansion, and evaluation metrics like MRR and NDCG.</p>
+
+<p>Repository: <a href="https://github.com/srikanthethiraj/rag-knowledge-base">github.com/srikanthethiraj/rag-knowledge-base</a></p>
+
+<hr />
+
+<p><em>I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on <a href="https://www.linkedin.com/in/srikanthethiraj/">LinkedIn</a>.</em></p>
+
+        </div>
+        <footer class="post-footer">
+            <div class="post-share">
+                <span class="post-share-title">Share:</span>
+                <a target="_blank"
+                    href="https://twitter.com/share?text=Build+a+RAG+Knowledge+Base+with+Amazon+Bedrock+and+OpenSearch&amp;url=https://blog.srikanthethiraj.com/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch">Twitter</a>
+                <a target="_blank"
+                    href="https://www.facebook.com/sharer/sharer.php?u=https://blog.srikanthethiraj.com/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch">Facebook</a>
+            </div><!-- .share-post -->
+        </footer>
+        
+<section id="comments-area" class="comments-area">
+    <h2 class="comments-title">Comments</h2>
+    <div class="comments-inside">
+        <div id="disqus_thread"></div>
+    </div><!-- .comments-inside -->
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by
+            Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</section><!-- .comments-area -->
+<script type="text/javascript">
+    var disqus_shortname = 'justgoodthemes';
+    var disqus_developer = 0;
+    (function () {
+        var dsq = document.createElement('script');
+        dsq.type = 'text/javascript';
+        dsq.async = true;
+        dsq.src = window.location.protocol + '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+
+    </article>
+    
+    <section class="newsletter-box inner">
+    <h2 class="newsletter-box-title">Subscribe to Srikanth Ethiraj newsletter</h2>
+    <p>Get the latest and greatest from Srikanth Ethiraj delivered straight to your inbox every week.</p>
+    <!-- Begin MailChimp Signup Form -->
+    <div id="mc_embed_signup">
+        <form action="https://srikanthethiraj.us19.list-manage.com/subscribe/post?u=42acdd8bd6be3355d0c6df855&amp;id=72ab533508&amp;f_id=00c336e3f0" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form"
+            class="validate gh-subscribe-form" target="_blank" novalidate>
+            <label for="mce-EMAIL" class="screen-reader-text">Email Address</label>
+            <input type="email" value="" name="EMAIL" class="required email subscribe-email" id="mce-EMAIL" placeholder="Your email address">
+            <input type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe" class="button">
+        </form>
+    </div>
+    <!--End mc_embed_signup-->
+</section><!-- .widget -->
+    
+    <section class="read-next inner">
+        <h2 class="read-next-title">Read Next</h2>
+        
+        <article class="post">
+            <header class="post-header">
+                <div class="post-meta">
+                    <time class="published" datetime="April 20, 2026">April 20, 2026</time>
+                </div>
+                <h3 class="post-title"><a href="/build-a-customer-feedback-pipeline-with-amazon-bedrock">Build a Customer Feedback Pipeline with Amazon Bedrock</a>
+                </h3>
+                <p class="post-tags">
+
+                    
+                    <a
+                        href="/tags/index.html#AI" rel="tag">AI</a><a
+                        href="/tags/index.html#AWS" rel="tag">AWS</a><a
+                        href="/tags/index.html#Python" rel="tag">Python</a><a
+                        href="/tags/index.html#Bedrock" rel="tag">Bedrock</a><a
+                        href="/tags/index.html#Comprehend" rel="tag">Comprehend</a><a
+                        href="/tags/index.html#Textract" rel="tag">Textract</a><a
+                        href="/tags/index.html#Transcribe" rel="tag">Transcribe</a>
+                    
+
+                </p>
+            </header>
+        </article>
+        
+        
+        <article class="post">
+            <header class="post-header">
+                <div class="post-meta">
+                    <time class="published" datetime="April 24, 2026">April 24, 2026</time>
+                </div>
+                <h3 class="post-title"><a href="/optimize-rag-search-with-hybrid-retrieval-and-reranking-on-aws">Optimize RAG Search with Hybrid Retrieval and Reranking on AWS</a></h3>
+                <p class="post-tags">
+                    
+                    <a href="/tags/index.html#AI"
+                        rel="tag">AI</a><a href="/tags/index.html#AWS"
+                        rel="tag">AWS</a><a href="/tags/index.html#Python"
+                        rel="tag">Python</a><a href="/tags/index.html#Bedrock"
+                        rel="tag">Bedrock</a><a href="/tags/index.html#OpenSearch"
+                        rel="tag">OpenSearch</a><a href="/tags/index.html#RAG"
+                        rel="tag">RAG</a><a href="/tags/index.html#Embeddings"
+                        rel="tag">Embeddings</a><a href="/tags/index.html#Search"
+                        rel="tag">Search</a>
+                    
+                </p>
+            </header>
+        </article>
+        
+    </section><!-- .read-next -->
+    <!-- Create a sorted array of tags -->
+     
+    <section class="tagcloud inner">
+        <h2 class="tagcloud-title">Tags</h2>
+        <div class="tag-links">
+            
+            <a href='/tags/#AI'>AI</a>
+            
+            <a href='/tags/#AWS'>AWS</a>
+            
+            <a href='/tags/#Bedrock'>Bedrock</a>
+            
+            <a href='/tags/#Comprehend'>Comprehend</a>
+            
+            <a href='/tags/#DynamoDB'>DynamoDB</a>
+            
+            <a href='/tags/#Embeddings'>Embeddings</a>
+            
+            <a href='/tags/#Guardrails'>Guardrails</a>
+            
+            <a href='/tags/#Lambda'>Lambda</a>
+            
+            <a href='/tags/#OpenSearch'>OpenSearch</a>
+            
+            <a href='/tags/#Python'>Python</a>
+            
+            <a href='/tags/#RAG'>RAG</a>
+            
+            <a href='/tags/#Search'>Search</a>
+            
+            <a href='/tags/#StepFunctions'>StepFunctions</a>
+            
+            <a href='/tags/#Textract'>Textract</a>
+            
+            <a href='/tags/#Transcribe'>Transcribe</a>
+            
+        </div><!-- .tag-links -->
+    </section><!-- .tagcloud -->
+</main><!-- .site-main -->
+
+                
+
+                <footer id="colophon" class="site-footer">
+    <p class="site-info inner">
+        <a href="#">Srikanth Ethiraj</a> &copy; 2026. Royce theme by
+        <a target="_blank" href="https://justgoodthemes.com/">JustGoodThemes</a>.
+        <br />
+        Powered by <a target="_blank" href="https://jekyllrb.com/">Jekyll</a>.
+    </p>
+    <a id="back-to-top" class="back-to-top" href="#page">
+        <span class="icon-arrow-up" aria-hidden="true"></span>
+        <span class="screen-reader-text">Back to top</span>
+    </a>
+</footer><!-- .site-footer -->
+            </div><!-- .inner-wide -->
+        </div><!-- .site-content -->
+    </div><!-- .site -->
+
+    
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX', { 'anonymize_ip': true });
+  </script>
+
+    <!-- Javascript Assets -->
+    <script src="/assets/js/jquery-3.3.1.min.js"></script>
+    <script src="/assets/js/plugins.js"></script>
+    <script src="/assets/js/custom.js"></script>
+
+</body>
+
+</html>

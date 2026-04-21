@@ -3,7 +3,7 @@ layout: post
 title: "Build an AI-Powered Insurance Claim Processor with Amazon Bedrock"
 tags: [AI, AWS, Python, Bedrock, RAG]
 featured_image_thumbnail:
-featured_image: assets/images/posts/2019/laptop.jpg
+featured_image: assets/images/posts/2026/article-1-hero.jpeg
 featured: false
 hidden: false
 ---
@@ -131,13 +131,14 @@ You'll see the full pipeline — upload, extract, validate, summarize, and compa
 
 ## What's Next
 
-This is Part 1 of a six-part series. Each project builds on the last:
+This is Part 1 of an ongoing series. Each project builds on the last:
 
 - **Part 2** — Financial Services AI Assistant: model benchmarking, circuit breakers, cross-region resilience
 - **Part 3** — Customer Feedback Pipeline: multimodal data processing (text, images, audio)
 - **Part 4** — Knowledge Base RAG System: vector stores, embeddings, document chunking
 - **Part 5** — Advanced Search & Retrieval: hybrid search, reranking, query expansion
 - **Part 6** — AI Support Assistant with Governance: guardrails, prompt management, conversation flows
+- **Part 7+** — Agentic AI, enterprise integration, AI safety, optimization, testing & evaluation
 
 In Part 2, we take the basic `compare_models` from this project and build a proper benchmarking framework with dynamic model selection and fault tolerance.
 

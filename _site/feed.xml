@@ -5,9 +5,1059 @@
     <description>Building AI applications on AWS — one project at a time.</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Thu, 16 Apr 2026 14:46:40 -0500</pubDate>
-    <lastBuildDate>Thu, 16 Apr 2026 14:46:40 -0500</lastBuildDate>
+    <pubDate>Mon, 20 Apr 2026 22:18:52 -0500</pubDate>
+    <lastBuildDate>Mon, 20 Apr 2026 22:18:52 -0500</lastBuildDate>
     <generator>Jekyll v4.4.1</generator>
+    
+      <item>
+        <title>Build an AI Support Assistant with Bedrock Guardrails and Governance</title>
+        <description>&lt;p&gt;In Part 5, we optimized RAG search with hybrid retrieval, reranking, and evaluation metrics. The search is smart. But a smart search engine isn’t a support assistant. It doesn’t know who it is, what it should refuse to answer, or when to hand off to a human.&lt;/p&gt;
+
+&lt;p&gt;Imagine you’re running a SaaS company. You deploy a chatbot to handle customer support. Day one, it answers billing questions beautifully. Day two, a customer asks for legal advice and the bot happily obliges. Day three, someone pastes their credit card number into the chat and the bot echoes it back in the response. Day four, an angry customer demands a human and the bot keeps trying to help.&lt;/p&gt;
+
+&lt;p&gt;This project builds the governance layer that prevents all of that. Persona management that defines who the assistant is and what it won’t do. Guardrails that block off-topic requests and redact PII before it reaches the model. Intent detection that routes angry customers to humans instead of chatbots. And edge case testing that proves it all works before you go live.&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;the-problem&quot;&gt;The Problem&lt;/h2&gt;
+
+&lt;p&gt;Every company deploying an AI assistant faces the same risks. The model is smart enough to answer almost anything — and that’s the problem.&lt;/p&gt;
+
+&lt;p&gt;In Part 1, our &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PromptTemplateManager&lt;/code&gt; was a Python class with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;{variable}&lt;/code&gt; substitution. No versioning, no persona, no safety controls. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ContentValidator&lt;/code&gt; redacted PII with regex — fine for a demo, but not how you’d protect a production system handling real customer data.&lt;/p&gt;
+
+&lt;p&gt;A real support assistant needs to know its role boundaries. It needs to refuse off-topic questions. It needs to detect when a customer is angry and escalate to a human. It needs to redact PII before it ever reaches the model. And you need to test all of this systematically — not deploy and hope for the best.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-pattern&quot;&gt;The Pattern&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;Guardrail → Detect Intent → Build Prompt → Generate → Filter Output → Track History&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Every query flows through safety checks before and after generation. The assistant never sees raw PII. Off-topic requests are blocked before they reach the model. Angry customers get routed to humans, not chatbots.&lt;/p&gt;
+
+&lt;h2 id=&quot;architecture&quot;&gt;Architecture&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/posts/2026/article-6-architecture.png&quot; alt=&quot;AI Support Assistant Architecture&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The assistant is a single pipeline: customer query → guardrails → intent detection → prompt building with persona and history → Nova Lite generation → output filtering → conversation storage.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-it-works--six-phases&quot;&gt;How It Works — Six Phases&lt;/h2&gt;
+
+&lt;h3 id=&quot;phase-1-prompt-management&quot;&gt;Phase 1: Prompt Management&lt;/h3&gt;
+
+&lt;p&gt;The assistant has a defined persona — role, boundaries, tone, and response format. This isn’t a system prompt you paste into a chat window. It’s a versioned configuration that can be stored in S3, loaded at runtime, and updated without redeployment.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Persona: AWS Support Assistant
+Role: You are a helpful AWS technical support assistant.
+Boundaries:
+  - Only answer questions about AWS services and cloud computing.
+  - Do not provide financial advice, legal advice, or medical advice.
+  - Do not share internal AWS information or pricing not publicly available.
+  - If you don&apos;t know the answer, say so clearly and suggest contacting AWS Support.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Different intents get different prompt templates. A troubleshooting query gets a template that asks for step-by-step guidance. A vague query gets a template that asks clarifying questions. A handoff gets a template that summarizes the issue for the human agent.&lt;/p&gt;
+
+&lt;p&gt;Part 1’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PromptTemplateManager&lt;/code&gt; had one template with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;{variable}&lt;/code&gt; slots. This system has four templates, a persona definition, and version control.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-2-guardrails&quot;&gt;Phase 2: Guardrails&lt;/h3&gt;
+
+&lt;p&gt;Every input is checked before it reaches the model. Every output is checked before it reaches the customer.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Normal query: ✅ ALLOWED
+  &quot;How do I reset my password?&quot;
+
+Denied topic: 🚫 BLOCKED
+  &quot;What&apos;s the competitor pricing for Zendesk?&quot;
+  Reason: Denied topic detected: competitor pricing
+
+PII in input: ✅ ALLOWED (FILTERED)
+  &quot;My SSN is 123-45-6789 and I need help&quot;
+  Filtered: &quot;My SSN is [REDACTED-SSN] and I need help&quot;
+
+AWS key leak: ✅ ALLOWED (FILTERED)
+  &quot;My key is AKIAIOSFODNN7EXAMPLE&quot;
+  Filtered: &quot;My key is [REDACTED-AWS_KEY]&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The guardrails catch denied topics (competitor pricing, internal roadmaps, medical/legal advice), detect and redact PII (SSNs, credit cards, AWS keys, emails, phone numbers), and filter problematic phrases from output.&lt;/p&gt;
+
+&lt;p&gt;Part 1’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ContentValidator&lt;/code&gt; did PII redaction with regex. This system adds topic detection, input/output separation, and AWS credential detection.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-3-intent-detection--sentiment&quot;&gt;Phase 3: Intent Detection &amp;amp; Sentiment&lt;/h3&gt;
+
+&lt;p&gt;Every query is classified by intent and sentiment before the prompt is built. This determines which template to use and whether to escalate.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Query                                              Intent             Sentiment
+My invoice shows a charge I don&apos;t recognize         billing            negative
+How do I add a new team member?                    how_to             neutral
+Why is the dashboard loading so slowly?            troubleshooting    negative
+I can&apos;t log into my account                        account            negative
+Help                                               general            neutral
+This is terrible, nothing works!                   general            negative
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Low-confidence intents trigger clarification. Negative sentiment with escalation phrases triggers human handoff. The assistant adapts its behavior based on what it detects.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-4-multi-turn-conversation&quot;&gt;Phase 4: Multi-Turn Conversation&lt;/h3&gt;
+
+&lt;p&gt;The assistant remembers what was discussed. Each conversation is stored with a TTL for automatic cleanup.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Turn 1:
+  Customer: How do I upgrade my subscription plan?
+  Assistant: To upgrade your plan, go to Settings → Billing → Change Plan.
+             You&apos;ll see the available tiers with pricing. The upgrade takes
+             effect immediately and you&apos;ll be prorated for the current month...
+
+Turn 2:
+  Customer: What about adding more team members on the new plan?
+  Assistant: On the upgraded plan, you can add team members under
+             Settings → Team → Invite. Each additional seat is billed
+             monthly based on your plan tier...
+
+Turn 3:
+  Customer: Can you show me the pricing for that?
+  Assistant: Here&apos;s the per-seat pricing for each plan tier:
+             Starter: $10/seat/month, Professional: $25/seat/month,
+             Enterprise: custom pricing...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Turn 2 understands “the new plan” because it has the conversation history. Turn 3 knows “that” refers to per-seat pricing. Without history, each turn would be a disconnected question.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-5-edge-case-testing&quot;&gt;Phase 5: Edge Case Testing&lt;/h3&gt;
+
+&lt;p&gt;Six scenarios that test the assistant’s governance controls under pressure.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Scenario                    Result    Latency
+Angry customer              ✅ PASS      922ms
+Vague request               ✅ PASS     1575ms
+Off-topic (denied topic)    ✅ PASS        0ms
+PII in input                ✅ PASS     2100ms
+Technical troubleshooting   ✅ PASS     3495ms
+Multi-turn context          ✅ PASS     3844ms
+
+Results: 6/6 passed
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The angry customer gets routed to a human agent. The vague request gets a clarifying question. The off-topic query is blocked instantly (0ms — never reaches the model). PII is redacted before generation. Technical queries get step-by-step troubleshooting. Multi-turn queries use conversation context.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-6-fallback--human-handoff&quot;&gt;Phase 6: Fallback &amp;amp; Human Handoff&lt;/h3&gt;
+
+&lt;p&gt;When the model fails or the customer demands a human, the assistant degrades gracefully.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Angry customer escalation:
+  Intent: handoff
+  Response: I understand your frustration, and I&apos;m here to help.
+            I&apos;ll connect you with a human agent who can assist you further.
+            To give them a head start, your issue seems to be urgent
+            and requires immediate personal attention...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The handoff includes a summary of the customer’s issue so the human agent has context. The customer never gets an error message or a blank screen.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-changed-from-part-1&quot;&gt;What Changed from Part 1&lt;/h2&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Concept&lt;/th&gt;
+      &lt;th&gt;Part 1 (Insurance Claim Processor)&lt;/th&gt;
+      &lt;th&gt;Part 6 (This Project)&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Prompt management&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PromptTemplateManager&lt;/code&gt; — Python class with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;{variable}&lt;/code&gt; slots&lt;/td&gt;
+      &lt;td&gt;Versioned persona + 4 intent-specific templates + S3 storage&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Safety controls&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ContentValidator&lt;/code&gt; — PII regex redaction&lt;/td&gt;
+      &lt;td&gt;Guardrails: topic detection, PII redaction, AWS key detection, output filtering&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Conversation&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Single-turn only&lt;/td&gt;
+      &lt;td&gt;Multi-turn with DynamoDB history and TTL&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Intent handling&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;None — same prompt for everything&lt;/td&gt;
+      &lt;td&gt;Intent detection + sentiment analysis + routing&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Error handling&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Retry with backoff&lt;/td&gt;
+      &lt;td&gt;Fallback responses + human handoff&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Testing&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;None&lt;/td&gt;
+      &lt;td&gt;Edge case framework: 6 scenarios, automated pass/fail&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2 id=&quot;getting-started&quot;&gt;Getting Started&lt;/h2&gt;
+
+&lt;p&gt;Prerequisites: Python 3.10+, AWS CLI configured, Bedrock model access for Nova Lite.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;git clone https://github.com/srikanthethiraj/ai-support-assistant.git
+&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;ai-support-assistant
+python3 &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; venv venv
+&lt;span class=&quot;nb&quot;&gt;source &lt;/span&gt;venv/bin/activate
+pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-r&lt;/span&gt; requirements.txt
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Run the demo:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python demo.py &lt;span class=&quot;nt&quot;&gt;--region&lt;/span&gt; us-east-1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;You’ll see all six phases — prompt management, guardrails, intent detection, multi-turn conversation, edge case testing, and fallback/handoff.&lt;/p&gt;
+
+&lt;p&gt;No infrastructure to deploy for the local demo. The in-memory conversation store handles history without DynamoDB.&lt;/p&gt;
+
+&lt;h2 id=&quot;tear-down&quot;&gt;Tear Down&lt;/h2&gt;
+
+&lt;p&gt;No infrastructure to tear down for the local demo. If you deployed the DynamoDB table for production use:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;aws dynamodb delete-table &lt;span class=&quot;nt&quot;&gt;--table-name&lt;/span&gt; assistant-conversations &lt;span class=&quot;nt&quot;&gt;--region&lt;/span&gt; us-east-1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;whats-next&quot;&gt;What’s Next&lt;/h2&gt;
+
+&lt;p&gt;This is Part 6 of an ongoing series:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Part 1&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock&quot;&gt;Insurance Claim Processor&lt;/a&gt;: Bedrock basics, prompt templates, simple RAG&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 2&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-financial-services-ai-assistant-with-amazon-bedrock&quot;&gt;Financial Services AI Assistant&lt;/a&gt;: benchmarking, circuit breakers, cross-region resilience&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 3&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-customer-feedback-pipeline-with-amazon-bedrock&quot;&gt;Customer Feedback Pipeline&lt;/a&gt;: multimodal data processing&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 4&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch&quot;&gt;RAG Knowledge Base&lt;/a&gt;: vector stores, embeddings, document chunking&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 5&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/optimize-rag-search-with-hybrid-retrieval-and-reranking-on-aws&quot;&gt;Advanced Search &amp;amp; Retrieval&lt;/a&gt;: hybrid search, reranking, query expansion&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 6&lt;/strong&gt; — AI Support Assistant with Governance (this post): guardrails, prompt management, conversation flows&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 7&lt;/strong&gt; — Agentic AI — Strands Agents, Bedrock AgentCore &amp;amp; Multi-Agent Systems&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 8&lt;/strong&gt; — Multi-Tier Model Deployment &amp;amp; Enterprise Integration&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 9&lt;/strong&gt; — AI Safety — Guardrails, PII Protection &amp;amp; Threat Detection&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 10&lt;/strong&gt; — Cost &amp;amp; Latency Optimization for GenAI&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 11&lt;/strong&gt; — AI Governance — Compliance, Fairness &amp;amp; Model Cards&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 12&lt;/strong&gt; — Testing, Evaluation &amp;amp; Troubleshooting GenAI Systems&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In Part 7, we’ll dive into agentic AI — building agents with the Strands SDK, deploying them on Bedrock AgentCore, and orchestrating multi-agent systems that reason about which action to take.&lt;/p&gt;
+
+&lt;p&gt;Repository: &lt;a href=&quot;https://github.com/srikanthethiraj/ai-support-assistant&quot;&gt;github.com/srikanthethiraj/ai-support-assistant&lt;/a&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;em&gt;I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on &lt;a href=&quot;https://www.linkedin.com/in/srikanthethiraj/&quot;&gt;LinkedIn&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+</description>
+        <pubDate>Tue, 28 Apr 2026 00:00:00 -0500</pubDate>
+        <link>http://localhost:4000/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance</link>
+        <guid isPermaLink="true">http://localhost:4000/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance</guid>
+        
+        <category>AI</category>
+        
+        <category>AWS</category>
+        
+        <category>Python</category>
+        
+        <category>Bedrock</category>
+        
+        <category>Guardrails</category>
+        
+        <category>Comprehend</category>
+        
+        <category>DynamoDB</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Optimize RAG Search with Hybrid Retrieval and Reranking on AWS</title>
+        <description>&lt;p&gt;In Part 4, we built a RAG knowledge base with vector stores, embeddings, and document processing. It works — ask a question, get an answer grounded in your documents. But “works” and “works well” are different things.&lt;/p&gt;
+
+&lt;p&gt;Think about the last time you used your company’s internal search. You typed a question, got 50 results, and none of them answered what you actually asked. Or worse — the right answer was there, buried at result #37.&lt;/p&gt;
+
+&lt;p&gt;This project fixes that. Hybrid retrieval that combines semantic understanding with exact keyword matching. Reranking that puts the best results first, not just the most similar. Query expansion that finds what you meant, not just what you typed. And evaluation metrics that tell you exactly how good your search is — so you stop guessing and start measuring.&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;the-problem&quot;&gt;The Problem&lt;/h2&gt;
+
+&lt;p&gt;Your knowledge base from Part 4 can find relevant documents. But “relevant” and “the right answer” aren’t the same thing.&lt;/p&gt;
+
+&lt;p&gt;Pure vector search has a blind spot. It’s great at semantic similarity — “deployment process” matches “release pipeline” even though they share no words. But it misses exact terms. Search for “PgBouncer” and vector search returns results about database connections in general, not the specific tool you asked about.&lt;/p&gt;
+
+&lt;p&gt;Keyword search has the opposite problem. It finds exact matches but misses meaning. “How do I ship code to production?” returns nothing if your runbook says “deployment process” instead of “ship code.”&lt;/p&gt;
+
+&lt;p&gt;This is why enterprise search feels broken. Most systems use one approach or the other. You need both. And you need a way to measure which approach actually works better — not just “it looks right” but real metrics like MRR and NDCG.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-pattern&quot;&gt;The Pattern&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;Expand → Embed → Search (vector + keyword) → Rerank → Generate → Evaluate&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Article 4 was: embed → search → generate. This project adds query intelligence on the front end, hybrid search and reranking in the middle, and quality measurement on the back end.&lt;/p&gt;
+
+&lt;h2 id=&quot;architecture&quot;&gt;Architecture&lt;/h2&gt;
+
+&lt;p&gt;The system has two flows: the search pipeline that processes queries, and the evaluation framework that measures quality.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Search Pipeline&lt;/strong&gt; — queries flow through expansion, embedding, hybrid search, reranking, and generation.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/posts/2026/article-5-search.png&quot; alt=&quot;Search Pipeline&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The evaluation framework runs test queries with known relevant documents through the pipeline and scores results with MRR, NDCG, Precision@K, and Recall@K.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-it-works&quot;&gt;How It Works&lt;/h2&gt;
+
+&lt;p&gt;Six phases. Each one adds a layer of intelligence to the basic vector search from Article 4.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Phase 1: Chunking Comparison.&lt;/strong&gt; Three strategies side by side — fixed-size (512 chars with overlap), hierarchical (split by headings then paragraphs), and semantic (respect natural boundaries). The same corpus produces very different chunk distributions:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Strategy               Chunks   Avg Size    Min    Max
+fixed-512                  69        162      1    512
+hierarchical               26        345    192    614
+semantic                   14        643    240    796
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Fixed-size produces 69 tiny fragments. Hierarchical splits by section titles and keeps each title with its content — 26 mid-sized chunks. Semantic respects natural paragraph boundaries — 14 coherent sections. More chunks isn’t better — it means more noise in retrieval.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Phase 2: Embedding Benchmark.&lt;/strong&gt; Amazon Titan Embed V2 converts text to 1024-dimensional vectors. We measure latency (244ms average) and check that semantically related texts produce similar vectors while unrelated texts don’t.&lt;/p&gt;
+
+&lt;p&gt;The similarity matrix confirms the model understands meaning — deployment and database content score low (unrelated), while onboarding and architecture content score higher (both about engineering processes).&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Phase 3: Hybrid Search.&lt;/strong&gt; This is the core upgrade from Article 4. Instead of pure vector search, we combine 75% vector similarity with 25% keyword matching. The keyword component catches exact terms that vector search might miss.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Query: &quot;How do I deploy to production?&quot;
+Weights: vector=0.75, keyword=0.25
+
+[1] (0.5597) We deploy to production twice a day — 10 AM and 3 PM Central...
+[2] (0.4505) A bad deployment took down the checkout flow for 45 minutes...
+[3] (0.4303) Clone the main monorepo from GitHub. You&apos;ll need access to...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The top result scores 0.56 — a strong match. The canary deployment ADR is second because it’s also about deployments. The keyword component boosted both because they contain “deploy.”&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Phase 4: Reranking.&lt;/strong&gt; Hybrid search gets the right documents into the top-K. Reranking puts them in the right order. We use Nova Micro to score each result’s relevance to the query on a 0-10 scale.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Reranked results:
+[1] (0.90) We deploy to production twice a day — 10 AM and 3 PM Central...
+[2] (0.80) A bad deployment took down the checkout flow for 45 minutes...
+[3] (0.30) Clone the main monorepo from GitHub...
+[4] (0.30) The monolith was becoming difficult to deploy and scale...
+[5] (0.20) Production database access requires a VPN connection...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;After reranking, the deployment process passage scores 0.90 while database access drops to 0.20. The model understands relevance better than cosine similarity alone.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Phase 5: Query Processing.&lt;/strong&gt; Simple queries get expanded into related searches. Complex queries get decomposed into sub-questions.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Simple: &quot;deployment process&quot;
+→ &quot;deployment process&quot;
+→ &quot;automation in deployment workflows&quot;
+→ &quot;steps involved in application rollout&quot;
+→ &quot;software release management procedures&quot;
+
+Complex: &quot;Compare our deployment process with our database backup strategy&quot;
+→ &quot;What are the key steps in our deployment process?&quot;
+→ &quot;What are the key components of our database backup strategy?&quot;
+→ &quot;How do they compare in efficiency and reliability?&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Expansion catches different phrasings. Decomposition breaks multi-part questions into answerable pieces.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Phase 6: Evaluation.&lt;/strong&gt; This is how you know your search actually works. Five test queries with known relevant passages, scored on four metrics:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Query                                            MRR   NDCG    P@5    R@5
+How do I deploy to production?                 1.000  0.854  0.800  0.364
+What database do we use and why?               1.000  1.000  1.000  0.556
+What should I do when API latency spikes?      1.000  1.000  1.000  0.455
+How does our caching strategy work?            1.000  0.616  0.600  0.429
+How do I set up my local dev environment?      1.000  0.920  0.400  1.000
+AVERAGE                                        1.000  0.878  0.760  0.560
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;MRR of 1.0 means the most relevant result is always ranked first. NDCG of 0.878 means the overall ranking quality is strong. These are real metrics from real internal docs — not toy examples.&lt;/p&gt;
+
+&lt;h2 id=&quot;evaluation-metrics--what-they-mean&quot;&gt;Evaluation Metrics — What They Mean&lt;/h2&gt;
+
+&lt;p&gt;Before diving into the metrics, one concept to understand: &lt;strong&gt;Top-K&lt;/strong&gt;. When you search, you don’t look at every result — you look at the top 5 or top 10. K is that number. Top-5 means “the 5 best results the system returned.” All the metrics below are measured against this top-K set.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;MRR (Mean Reciprocal Rank)&lt;/strong&gt; — Is the best answer at the top? If the right result is always #1, MRR is 1.0. If it’s usually #2, MRR is 0.5. Simple: higher is better.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;NDCG (Normalized Discounted Cumulative Gain)&lt;/strong&gt; — Are ALL the good results near the top? MRR only cares about the first hit. NDCG checks whether the second, third, and fourth relevant results are also ranked high — not buried at the bottom.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Precision@K&lt;/strong&gt; — How much junk is in your results? If you ask for 5 results and 3 are relevant, Precision@5 is 0.60. The other 2 were noise.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Recall@K&lt;/strong&gt; — Did you miss anything important? If there are 10 relevant docs in your knowledge base and 9 of them appear in your top-K, Recall is 0.90. The one you missed might have been the answer someone needed.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-changed-from-article-4&quot;&gt;What Changed from Article 4&lt;/h2&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Concept&lt;/th&gt;
+      &lt;th&gt;Article 4 (Knowledge Base)&lt;/th&gt;
+      &lt;th&gt;Article 5 (This Project)&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Search&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Pure vector (cosine similarity)&lt;/td&gt;
+      &lt;td&gt;Hybrid (75% vector + 25% keyword)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Ranking&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Single-pass similarity score&lt;/td&gt;
+      &lt;td&gt;Two-pass: similarity then reranking&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Query handling&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Direct embedding&lt;/td&gt;
+      &lt;td&gt;Expansion for simple, decomposition for complex&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Chunking&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Semantic only&lt;/td&gt;
+      &lt;td&gt;Three strategies compared with metrics&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Evaluation&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;None — “it looks right”&lt;/td&gt;
+      &lt;td&gt;MRR, NDCG, Precision@K, Recall@K&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Reranking&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;None&lt;/td&gt;
+      &lt;td&gt;Nova Micro relevance scoring&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2 id=&quot;getting-started&quot;&gt;Getting Started&lt;/h2&gt;
+
+&lt;p&gt;Prerequisites: Python 3.10+, AWS CLI configured, Bedrock model access for Titan Embed V2, Nova Lite, and Nova Micro.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;git clone https://github.com/srikanthethiraj/advanced-search-retrieval.git
+&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;advanced-search-retrieval
+python3 &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; venv venv
+&lt;span class=&quot;nb&quot;&gt;source &lt;/span&gt;venv/bin/activate
+pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-r&lt;/span&gt; requirements.txt
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Run the demo:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python demo.py &lt;span class=&quot;nt&quot;&gt;--region&lt;/span&gt; us-east-1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;You’ll see all six phases — chunking comparison, embedding benchmark, hybrid search, reranking, query processing, and evaluation metrics.&lt;/p&gt;
+
+&lt;h2 id=&quot;tear-down&quot;&gt;Tear Down&lt;/h2&gt;
+
+&lt;p&gt;No infrastructure to tear down — this project runs entirely against Bedrock APIs with in-memory search. No OpenSearch domain, no DynamoDB table, no CloudFormation stack.&lt;/p&gt;
+
+&lt;h2 id=&quot;whats-next&quot;&gt;What’s Next&lt;/h2&gt;
+
+&lt;p&gt;This is Part 5 of an ongoing series:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Part 1&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock&quot;&gt;Insurance Claim Processor&lt;/a&gt;: Bedrock basics, prompt templates, simple RAG&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 2&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-financial-services-ai-assistant-with-amazon-bedrock&quot;&gt;Financial Services AI Assistant&lt;/a&gt;: benchmarking, circuit breakers, cross-region resilience&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 3&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-customer-feedback-pipeline-with-amazon-bedrock&quot;&gt;Customer Feedback Pipeline&lt;/a&gt;: multimodal data processing&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 4&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch&quot;&gt;RAG Knowledge Base&lt;/a&gt;: vector stores, embeddings, document chunking&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 5&lt;/strong&gt; — Advanced Search &amp;amp; Retrieval (this post): hybrid search, reranking, query expansion, evaluation&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 6&lt;/strong&gt; — AI Support Assistant with Governance: guardrails, prompt management, conversation flows&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 7+&lt;/strong&gt; — Agentic AI, enterprise integration, AI safety, optimization, testing &amp;amp; evaluation&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In Part 6, we build a production AI assistant with Amazon Bedrock Guardrails, prompt management with versioning, conversation flows, and edge case testing.&lt;/p&gt;
+
+&lt;p&gt;Repository: &lt;a href=&quot;https://github.com/srikanthethiraj/advanced-search-retrieval&quot;&gt;github.com/srikanthethiraj/advanced-search-retrieval&lt;/a&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;em&gt;I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on &lt;a href=&quot;https://www.linkedin.com/in/srikanthethiraj/&quot;&gt;LinkedIn&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+</description>
+        <pubDate>Fri, 24 Apr 2026 00:00:00 -0500</pubDate>
+        <link>http://localhost:4000/optimize-rag-search-with-hybrid-retrieval-and-reranking-on-aws</link>
+        <guid isPermaLink="true">http://localhost:4000/optimize-rag-search-with-hybrid-retrieval-and-reranking-on-aws</guid>
+        
+        <category>AI</category>
+        
+        <category>AWS</category>
+        
+        <category>Python</category>
+        
+        <category>Bedrock</category>
+        
+        <category>OpenSearch</category>
+        
+        <category>RAG</category>
+        
+        <category>Embeddings</category>
+        
+        <category>Search</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Build a RAG Knowledge Base with Amazon Bedrock and OpenSearch</title>
+        <description>&lt;p&gt;In Part 3, we built a pipeline that processes text, images, audio, and surveys. All of it fed into a single Bedrock call for analysis. But the knowledge behind that analysis was baked into the prompt — no persistent memory, no document retrieval.&lt;/p&gt;
+
+&lt;p&gt;Your engineering team has hundreds of internal docs — runbooks, architecture decisions, onboarding guides, API references. They’re scattered across Confluence, GitHub wikis, and shared drives. New hires spend weeks finding answers that already exist. Senior engineers answer the same questions over and over.&lt;/p&gt;
+
+&lt;p&gt;This project builds an internal knowledge base that actually understands what you’re asking. Not keyword search. Semantic search — where “how do I reduce startup latency?” finds the doc about cold starts, even though it never uses the word “latency.”&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;the-problem&quot;&gt;The Problem&lt;/h2&gt;
+
+&lt;p&gt;Every growing engineering team hits this wall. The knowledge exists, but nobody can find it.&lt;/p&gt;
+
+&lt;p&gt;In Part 1, our knowledge base was a Python dictionary:&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;kb&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;PolicyKnowledgeBase&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;kb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;add_policy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;POL-2024-78432&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;Coverage: $500,000. Deductible: $1,000.&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Three policies. Exact key match. No semantic understanding. Ask “what’s my deductible?” and it has no idea — because it only matches on policy number, not meaning.&lt;/p&gt;
+
+&lt;p&gt;That’s how most internal search works today. Exact keyword matching. If the doc says “cold start” and you search “startup latency,” you get nothing.&lt;/p&gt;
+
+&lt;p&gt;Real knowledge bases need to understand what you’re asking, search across thousands of documents, and find the relevant passages — even when the wording doesn’t match exactly. That’s what vector search and embeddings solve.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-pattern&quot;&gt;The Pattern&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;Extract → Chunk → Embed → Index → Query → Maintain&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Same pattern whether you’re building a documentation assistant, a legal research tool, or a customer support bot. The data sources change. The pipeline doesn’t.&lt;/p&gt;
+
+&lt;h2 id=&quot;architecture&quot;&gt;Architecture&lt;/h2&gt;
+
+&lt;p&gt;The system has two paths: ingestion (documents in) and query (answers out).&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Ingestion Pipeline&lt;/strong&gt; — documents flow through extraction, chunking, and embedding into a vector index. EventBridge + Step Functions handle scheduled refresh.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/posts/2026/article-4-ingestion.png&quot; alt=&quot;Ingestion Pipeline&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Query Pipeline&lt;/strong&gt; — questions flow through embedding, vector search, and generation. The same Titan Embed V2 model embeds both documents and queries so they live in the same vector space.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/posts/2026/article-4-query.png&quot; alt=&quot;Query Pipeline&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;how-it-works&quot;&gt;How It Works&lt;/h2&gt;
+
+&lt;p&gt;Seven steps. Documents flow through extraction, chunking, and embedding into a vector index. Queries flow through embedding, retrieval, and generation.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Extract.&lt;/strong&gt; Documents are uploaded to S3. A processor downloads each file, detects the type (PDF, DOCX, TXT), extracts clean text, and computes a SHA-256 checksum. The checksum is the key to change detection — if a document hasn’t changed since last ingestion, we skip it entirely.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Chunk.&lt;/strong&gt; Raw text is split into meaningful segments. Not arbitrary 512-character blocks — semantic chunking that respects paragraph boundaries, section headings, and sentence structure. Each chunk is 100-1000 characters, sized for embedding quality without losing context.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Embed.&lt;/strong&gt; Amazon Titan Embed V2 converts each chunk into a 1024-dimensional vector. These vectors capture semantic meaning — “Lambda cold starts” and “execution environment initialization latency” end up close together in vector space, even though they share no words.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Index.&lt;/strong&gt; Vectors are bulk-indexed into OpenSearch using the HNSW algorithm for approximate nearest-neighbor search. Each document in the index carries the original text, document ID, chunk position, and metadata. This is the searchable knowledge base.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Track.&lt;/strong&gt; DynamoDB stores a record for every ingested document: its S3 key, checksum, chunk count, and timestamps. When the pipeline runs again, it checks the checksum first. Changed documents get re-processed. Unchanged ones are skipped. This makes incremental updates fast.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Query.&lt;/strong&gt; A user question goes through the same embedding model, producing a query vector. OpenSearch finds the k most similar chunks by cosine similarity. Those chunks become the context for Nova Lite, which generates an answer grounded in the retrieved passages.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Refresh.&lt;/strong&gt; EventBridge triggers a Step Functions workflow on a schedule. The workflow scans all tracked documents, re-downloads from S3, checks checksums, and only re-processes what’s changed. No manual intervention needed.&lt;/p&gt;
+
+&lt;h2 id=&quot;semantic-chunking--why-it-matters&quot;&gt;Semantic Chunking — Why It Matters&lt;/h2&gt;
+
+&lt;p&gt;Fixed-size chunking is simple: split every 512 characters, overlap by 50. But it cuts through sentences, separates headings from their content, and produces chunks that don’t make sense on their own.&lt;/p&gt;
+
+&lt;p&gt;Semantic chunking respects document structure. It splits on double newlines (paragraph boundaries) and section headings. If a section is too long, it falls back to sentence boundaries. If a trailing fragment is too short, it merges into the previous chunk.&lt;/p&gt;
+
+&lt;p&gt;The difference shows up in retrieval quality. A query about “how do I deploy to production?” should retrieve the paragraph about the deployment process — not half of that paragraph and half of the database access section.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;chunker&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;create_chunker&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;semantic&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;max_chunk_size&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;800&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;chunks&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;chunker&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;chunk&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;document_id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;onboarding-guide&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;# 4 chunks, each a coherent section of the guide
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;embeddings--turning-text-into-vectors&quot;&gt;Embeddings — Turning Text into Vectors&lt;/h2&gt;
+
+&lt;p&gt;Amazon Titan Embed V2 is the embedding model. It takes text and returns a 1024-dimensional vector that captures semantic meaning.&lt;/p&gt;
+
+&lt;p&gt;Two texts about the same concept produce similar vectors, even with different wording. This is what makes semantic search possible — you don’t need exact keyword matches.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Query: &quot;How do I deploy to production?&quot;
+
+Top match (score: 0.5796):
+  &quot;We deploy to production twice a day — 10 AM and 3 PM Central.
+   All changes go through the standard PR review process. At least
+   two approvals are required, and CI must pass. The deployment
+   pipeline runs in three stages: staging, canary, and full rollout.&quot;
+
+Second match (score: 0.3386):
+  &quot;Engineering Onboarding Guide — Welcome to the engineering team.
+   This guide covers everything you need to get productive...&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The deployment chunk scores 0.58. The general onboarding overview scores 0.34. Unrelated content (Redis caching, database alerts) scores below 0.20. The embedding model understands what the question is really asking.&lt;/p&gt;
+
+&lt;h2 id=&quot;change-detection--the-maintenance-problem&quot;&gt;Change Detection — The Maintenance Problem&lt;/h2&gt;
+
+&lt;p&gt;Ingesting documents once is easy. Keeping them current is the real challenge.&lt;/p&gt;
+
+&lt;p&gt;Every document gets a SHA-256 checksum stored in DynamoDB. When the refresh pipeline runs, it downloads each document, computes the new checksum, and compares. If the checksum matches, the document is skipped — no re-chunking, no re-embedding, no re-indexing.&lt;/p&gt;
+
+&lt;p&gt;If the checksum differs, the pipeline deletes the old vectors from OpenSearch and re-processes the document from scratch. This handles both content updates and structural changes (like a PDF being reformatted).&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;🔄 CHANGE DETECTION (re-ingest)
+   documents/onboarding-guide.txt: unchanged
+   documents/architecture-decisions.txt: unchanged
+   documents/ops-runbook.txt: unchanged
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Three documents checked. Zero re-processed. The pipeline ran in seconds instead of minutes.&lt;/p&gt;
+
+&lt;h2 id=&quot;rag-query--retrieval-meets-generation&quot;&gt;RAG Query — Retrieval Meets Generation&lt;/h2&gt;
+
+&lt;p&gt;The query engine combines vector search with foundation model generation. It’s two steps: find the relevant context, then generate an answer using that context.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Q: How do I deploy to production?
+A: We deploy to production twice a day — 10 AM and 3 PM Central.
+   All changes go through the standard PR review process with at
+   least two approvals required. The deployment pipeline runs in
+   three stages: staging, canary (10% traffic for 30 minutes),
+   and full rollout...
+   Sources: 5 chunks, latency: 1322ms
+
+Q: What database do we use and why?
+A: We use PostgreSQL with RDS as the primary database. It supports
+   JSON columns for flexible schemas, has strong indexing capabilities,
+   and the team has deep expertise. Connection pooling uses PgBouncer
+   with a max of 200 connections per instance.
+   Sources: 5 chunks, latency: 713ms
+
+Q: What should I do when API latency spikes?
+A: Check the API Latency dashboard in Datadog to identify which
+   service and endpoint is slow. Then check the Database Connection
+   Pool dashboard — if connections are near the max (200), the
+   database is the bottleneck. Also check Redis Cache Hit Rate.
+   Sources: 5 chunks, latency: 850ms
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Every answer is grounded in retrieved passages. The model doesn’t hallucinate — it synthesizes from the context it was given. If the context doesn’t contain the answer, it says so.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-changed-from-part-1&quot;&gt;What Changed from Part 1&lt;/h2&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Concept&lt;/th&gt;
+      &lt;th&gt;Part 1 (Insurance Claim Processor)&lt;/th&gt;
+      &lt;th&gt;Part 4 (This Project)&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Knowledge base&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PolicyKnowledgeBase&lt;/code&gt; — Python dict&lt;/td&gt;
+      &lt;td&gt;OpenSearch vector store with k-NN&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Embeddings&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;None — exact key match&lt;/td&gt;
+      &lt;td&gt;Amazon Titan Embed V2 (1024d)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Document processing&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Hardcoded strings&lt;/td&gt;
+      &lt;td&gt;PDF, DOCX, TXT extraction&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Chunking&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;None — full document as value&lt;/td&gt;
+      &lt;td&gt;Semantic chunking with section awareness&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Change detection&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;None&lt;/td&gt;
+      &lt;td&gt;SHA-256 checksums in DynamoDB&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Retrieval&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dict.get(policy_number)&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;Cosine similarity search across all documents&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Maintenance&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Manual restart&lt;/td&gt;
+      &lt;td&gt;Scheduled refresh via EventBridge + Step Functions&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PolicyKnowledgeBase&lt;/code&gt; from Part 1 was 20 lines of Python. This project is the production version of the same idea — real vector search, real embeddings, real document management.&lt;/p&gt;
+
+&lt;h2 id=&quot;getting-started&quot;&gt;Getting Started&lt;/h2&gt;
+
+&lt;p&gt;Prerequisites: Python 3.10+, AWS CLI configured, Bedrock model access for Titan Embed V2 and Nova Lite.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;git clone https://github.com/srikanthethiraj/rag-knowledge-base.git
+&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;rag-knowledge-base
+python3 &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; venv venv
+&lt;span class=&quot;nb&quot;&gt;source &lt;/span&gt;venv/bin/activate
+pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-r&lt;/span&gt; requirements.txt
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Run the local demo first — it tests extraction, chunking, and embeddings without needing OpenSearch:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python demo.py &lt;span class=&quot;nt&quot;&gt;--local&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--region&lt;/span&gt; us-east-1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Use whichever region you have Bedrock model access enabled in.&lt;/p&gt;
+
+&lt;p&gt;You’ll see documents extracted, chunks created, embeddings generated, and an in-memory similarity search that proves the vectors work.&lt;/p&gt;
+
+&lt;h2 id=&quot;deploy-to-aws&quot;&gt;Deploy to AWS&lt;/h2&gt;
+
+&lt;p&gt;For the full pipeline with OpenSearch and DynamoDB:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;./deploy.sh YOUR_BUCKET us-east-1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Wait about 10 minutes for the OpenSearch domain to provision, then run the full demo:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python demo.py &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;--bucket&lt;/span&gt; YOUR_BUCKET &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;--opensearch-host&lt;/span&gt; YOUR_OPENSEARCH_ENDPOINT &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;--region&lt;/span&gt; us-east-1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The full demo ingests all sample documents, runs three RAG queries, and demonstrates change detection on re-ingest.&lt;/p&gt;
+
+&lt;h2 id=&quot;tear-down&quot;&gt;Tear Down&lt;/h2&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;aws cloudformation delete-stack &lt;span class=&quot;nt&quot;&gt;--stack-name&lt;/span&gt; rag-knowledge-base-prod &lt;span class=&quot;nt&quot;&gt;--region&lt;/span&gt; us-east-1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;whats-next&quot;&gt;What’s Next&lt;/h2&gt;
+
+&lt;p&gt;This is Part 4 of an ongoing series:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Part 1&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock&quot;&gt;Insurance Claim Processor&lt;/a&gt;: Bedrock basics, prompt templates, simple RAG&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 2&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-financial-services-ai-assistant-with-amazon-bedrock&quot;&gt;Financial Services AI Assistant&lt;/a&gt;: benchmarking, circuit breakers, cross-region resilience&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 3&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-customer-feedback-pipeline-with-amazon-bedrock&quot;&gt;Customer Feedback Pipeline&lt;/a&gt;: multimodal data processing&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 4&lt;/strong&gt; — RAG Knowledge Base (this post): vector stores, embeddings, document chunking&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 5&lt;/strong&gt; — Advanced Search &amp;amp; Retrieval: hybrid search, reranking, query expansion&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 6&lt;/strong&gt; — AI Support Assistant with Governance: guardrails, prompt management, conversation flows&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 7+&lt;/strong&gt; — Agentic AI, enterprise integration, AI safety, optimization, testing &amp;amp; evaluation&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In Part 5, we take this knowledge base and make the search smarter — hybrid search combining vectors and keywords, reranking with Bedrock, query expansion, and evaluation metrics like MRR and NDCG.&lt;/p&gt;
+
+&lt;p&gt;Repository: &lt;a href=&quot;https://github.com/srikanthethiraj/rag-knowledge-base&quot;&gt;github.com/srikanthethiraj/rag-knowledge-base&lt;/a&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;em&gt;I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on &lt;a href=&quot;https://www.linkedin.com/in/srikanthethiraj/&quot;&gt;LinkedIn&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+</description>
+        <pubDate>Wed, 22 Apr 2026 00:00:00 -0500</pubDate>
+        <link>http://localhost:4000/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch</link>
+        <guid isPermaLink="true">http://localhost:4000/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch</guid>
+        
+        <category>AI</category>
+        
+        <category>AWS</category>
+        
+        <category>Python</category>
+        
+        <category>Bedrock</category>
+        
+        <category>OpenSearch</category>
+        
+        <category>RAG</category>
+        
+        <category>Embeddings</category>
+        
+        <category>DynamoDB</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Build a Customer Feedback Pipeline with Amazon Bedrock</title>
+        <description>&lt;p&gt;In Part 2, we built a financial services AI assistant with benchmarking, circuit breakers, and cross-region resilience. All of it processed one data type: text.&lt;/p&gt;
+
+&lt;p&gt;Real customer feedback doesn’t come in one format. It arrives as written reviews, photos of damaged products, phone call recordings, and survey responses. This project builds a pipeline that handles all of them — validates the data, routes each type to the right AWS AI service, and feeds everything into Amazon Nova Lite for unified analysis.&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;the-problem&quot;&gt;The Problem&lt;/h2&gt;
+
+&lt;p&gt;Most AI demos work with clean text. Real customer feedback is messy. A retail company might receive an email complaint, a photo of a broken item, a voicemail, and a post-purchase survey — all about the same product issue.&lt;/p&gt;
+
+&lt;p&gt;Part 1’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ContentValidator&lt;/code&gt; checked for missing fields and redacted PII. That’s fine for structured text. But what do you do with an image? An audio file? A survey with Likert scales and free-text comments?&lt;/p&gt;
+
+&lt;p&gt;You need a pipeline that validates data quality across all types, routes each record to the right processor, and brings everything together for analysis.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-pattern&quot;&gt;The Pattern&lt;/h2&gt;
+
+&lt;p&gt;This project teaches a pattern for handling diverse data types in AI applications:&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Ingest → Validate → Route → Process per modality → Format → Analyze&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Same approach works for medical intake (forms, X-rays, doctor notes), insurance claims (documents, photos, phone calls), or product reviews (text, images, video). The modalities change. The pattern doesn’t.&lt;/p&gt;
+
+&lt;h2 id=&quot;architecture&quot;&gt;Architecture&lt;/h2&gt;
+
+&lt;p&gt;The pipeline follows a processor-per-modality design. Each data type gets its own processor backed by a purpose-built AWS AI service. Results converge into a single Bedrock Converse API call for unified analysis.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/posts/2026/article-3-architecture.png&quot; alt=&quot;Customer Feedback Pipeline Architecture&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Key components:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Data Validator — Glue Data Quality rules for completeness, uniqueness, freshness&lt;/li&gt;
+  &lt;li&gt;Quality Scorer — Lambda function for text-specific quality scoring&lt;/li&gt;
+  &lt;li&gt;Text Processor — Amazon Comprehend for entity extraction and sentiment analysis&lt;/li&gt;
+  &lt;li&gt;Image Processor — Amazon Textract for text extraction, Rekognition for label detection&lt;/li&gt;
+  &lt;li&gt;Audio Processor — Amazon Transcribe for speech-to-text with speaker labels&lt;/li&gt;
+  &lt;li&gt;Survey Processor — SageMaker Processing for survey data transformation&lt;/li&gt;
+  &lt;li&gt;Bedrock Formatter — Converts all processing results into Converse API messages&lt;/li&gt;
+  &lt;li&gt;Quality Monitor — CloudWatch metrics, dashboards, and alarms&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;how-the-pipeline-works&quot;&gt;How the Pipeline Works&lt;/h2&gt;
+
+&lt;p&gt;Eight steps. Each record flows through validation, gets routed by type, processed by the right service, and fed into Bedrock for analysis.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Ingest.&lt;/strong&gt; Feedback records are built from sample data — text reviews and survey responses defined in code, plus image and audio files discovered automatically from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;samples/images/&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;samples/audio/&lt;/code&gt;. Each record has a customer ID, timestamp, channel, and the payload.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Validate.&lt;/strong&gt; Every record passes through Glue Data Quality rules. Three checks: completeness (all required fields present), uniqueness (no duplicate record IDs in the batch), and freshness (timestamp within the last 90 days). Records that fail are flagged and skipped.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Score.&lt;/strong&gt; Text records that pass structural validation get an additional quality check. A Lambda function scores text on length, word count, and content quality. Short or empty reviews get filtered out before they waste model invocations.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Route.&lt;/strong&gt; Valid records are directed to the appropriate processor based on their &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;data_type&lt;/code&gt; field. Text goes to Comprehend. Images go to Textract and Rekognition. Audio goes to Transcribe. Surveys go to SageMaker Processing.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Process.&lt;/strong&gt; Each processor extracts structured information from its modality:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Text → entities (people, organizations, dates) and sentiment (positive, negative, neutral, mixed)&lt;/li&gt;
+  &lt;li&gt;Images → extracted text from photos (OCR) and detected labels (objects, scenes)&lt;/li&gt;
+  &lt;li&gt;Audio → full transcript with speaker labels and timestamps&lt;/li&gt;
+  &lt;li&gt;Surveys → response distributions, mean scores, and free-text comments&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;Format.&lt;/strong&gt; Processing results are converted into Bedrock Converse API message format. Each modality has its own formatter that structures the data as conversation messages the model can understand.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Analyze.&lt;/strong&gt; All formatted messages are sent to Amazon Nova Lite in a single Converse API call. The model identifies themes across all feedback types, generates a sentiment summary, and produces actionable recommendations.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Monitor.&lt;/strong&gt; CloudWatch captures validation pass/fail rates, processing latency per modality, and error counts. Alarms fire when quality drops below thresholds.&lt;/p&gt;
+
+&lt;h2 id=&quot;data-validation--the-enterprise-version&quot;&gt;Data Validation — The Enterprise Version&lt;/h2&gt;
+
+&lt;p&gt;Part 1’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ContentValidator&lt;/code&gt; checked for missing fields and ran regex patterns for PII. It worked, but it was a Python class with hardcoded rules.&lt;/p&gt;
+
+&lt;p&gt;This project uses the same idea at enterprise scale. Glue Data Quality rules handle structural validation — completeness, uniqueness, freshness — in a declarative way. A Lambda quality scorer adds content-level checks for text records.&lt;/p&gt;
+
+&lt;p&gt;The validator processes records in batches. It tracks seen IDs to catch duplicates, checks timestamps against a 90-day freshness window, and publishes pass/fail metrics to CloudWatch after each batch.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Validation Results:
+  Total records:  12
+  Passed:          9
+  Failed:           3
+  Violations:      missing_customer_id (1), duplicate_id (1), stale_timestamp (1)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Records that pass structural validation but contain low-quality text (too short, gibberish) get caught by the quality scorer and marked &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LOW_QUALITY&lt;/code&gt;. They’re still stored — just excluded from analysis.&lt;/p&gt;
+
+&lt;h2 id=&quot;processing-four-data-types&quot;&gt;Processing Four Data Types&lt;/h2&gt;
+
+&lt;p&gt;This is where the pipeline diverges from text-only systems.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Text — Amazon Comprehend.&lt;/strong&gt; Comprehend extracts entities and detects sentiment without any model training. A customer review mentioning “John at the Austin store” produces entities: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PERSON: John&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LOCATION: Austin&lt;/code&gt;. Sentiment comes back as a distribution — 85% positive, 10% neutral, 5% negative — not just a label.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Images — Textract + Rekognition.&lt;/strong&gt; Two services, two jobs. Textract runs OCR on photos — useful when customers photograph receipts, labels, or handwritten notes. Rekognition detects objects and scenes — a photo of a damaged package produces labels like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Box&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Damage&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Cardboard&lt;/code&gt; with confidence scores. Both results feed into the analysis.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Audio — Amazon Transcribe.&lt;/strong&gt; Phone calls and voicemails are transcribed with speaker diarization. You don’t just get text — you get who said what and when. A support call produces segments: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Speaker 0: &quot;I&apos;ve been waiting for two weeks...&quot;&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Speaker 1: &quot;Let me look into that for you.&quot;&lt;/code&gt; The full transcript plus speaker labels go to Bedrock.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Surveys — SageMaker Processing.&lt;/strong&gt; Survey data is structured differently. Instead of extracting information, the processor computes statistics: response distributions per question, mean scores for numeric scales, and collects free-text responses. A satisfaction survey produces: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Q1 (Overall satisfaction): mean 3.2/5, distribution: {1: 5, 2: 8, 3: 12, 4: 15, 5: 10}&lt;/code&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;formatting-for-bedrock&quot;&gt;Formatting for Bedrock&lt;/h2&gt;
+
+&lt;p&gt;Each processor outputs a different data structure. The Bedrock Formatter converts all of them into Converse API messages.&lt;/p&gt;
+
+&lt;p&gt;Text results become a message with entities and sentiment. Image results become a message with extracted text and detected labels. Audio results become a conversation-style message with speaker segments. Survey results become a structured summary with statistics.&lt;/p&gt;
+
+&lt;p&gt;The Converse API accepts these as a list of messages in a single call. Nova Lite sees all the feedback together and can identify cross-modal patterns — a negative phone call about the same product that got bad survey scores and a photo of the defect.&lt;/p&gt;
+
+&lt;h2 id=&quot;example-output&quot;&gt;Example Output&lt;/h2&gt;
+
+&lt;p&gt;Running the pipeline against a mixed batch of customer feedback with real AWS services:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Customer Feedback Pipeline
+========================================
+
+Loading 38 sample records...
+  - 15 text reviews
+  - 7 images (receipts, shipping labels, feedback forms)
+  - 5 audio recordings (Polly-generated customer calls)
+  - 8 survey responses
+  - 3 invalid records (for validation demo)
+
+Validation:
+  Passed: 35/38
+  Failed: 3 (missing_customer_id, stale_timestamp, duplicate_id)
+
+Processing:
+  Text:    15 records → 23 entities, sentiment: 6 positive, 5 negative, 4 mixed
+  Images:   7 records → 569 text blocks, 30 labels
+  Audio:    5 records → 5 transcripts, 10 speaker segments
+  Surveys:  8 responses → 5 questions summarized, mean satisfaction 3.2/5
+
+Analysis (Nova Lite):
+  Themes:
+    1. Product quality and perceived value
+    2. Delivery and shipping issues
+    3. Customer support responsiveness and effectiveness
+    4. Warranty and return process clarity
+    5. Overall satisfaction and likelihood to recommend
+
+  Sentiment Summary:
+    Overall mixed sentiment. Many customers appreciate the product quality
+    and customer service, but significant frustration with delivery delays,
+    damaged products, and poor communication from support teams.
+
+  Recommendations:
+    1. Improve quality control to reduce defective products
+    2. Enhance communication regarding shipping delays
+    3. Train support staff to be more empathetic and proactive
+    4. Clarify warranty terms and simplify the return process
+    5. Act on customer feedback to continuously improve
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The model identified that shipping and packaging issues appeared across text reviews, photos, and phone calls — a pattern you’d miss if you only analyzed one data type.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-changed-from-part-1&quot;&gt;What Changed from Part 1&lt;/h2&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Concept&lt;/th&gt;
+      &lt;th&gt;Part 1 (Insurance Claim Processor)&lt;/th&gt;
+      &lt;th&gt;Part 3 (This Project)&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Data types&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Text only&lt;/td&gt;
+      &lt;td&gt;Text, images, audio, surveys&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Validation&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ContentValidator&lt;/code&gt; — field checks + PII regex&lt;/td&gt;
+      &lt;td&gt;Glue Data Quality rules + Lambda quality scorer&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;AI services&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Bedrock only&lt;/td&gt;
+      &lt;td&gt;Comprehend, Textract, Rekognition, Transcribe, SageMaker, Bedrock&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Processing&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Single pipeline for all documents&lt;/td&gt;
+      &lt;td&gt;Processor-per-modality with routing&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Monitoring&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;None&lt;/td&gt;
+      &lt;td&gt;CloudWatch metrics, dashboards, alarms&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Data quality&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Pass/fail on required fields&lt;/td&gt;
+      &lt;td&gt;Completeness + uniqueness + freshness + content scoring&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2 id=&quot;getting-started&quot;&gt;Getting Started&lt;/h2&gt;
+
+&lt;p&gt;Prerequisites: Python 3.10+, an AWS account with Bedrock access, AWS CLI configured. If you completed Part 1 or Part 2, you’re already set up.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;git clone https://github.com/srikanthethiraj/customer-feedback-pipeline.git
+&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;customer-feedback-pipeline
+python3 &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; venv venv
+&lt;span class=&quot;nb&quot;&gt;source &lt;/span&gt;venv/bin/activate
+pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-r&lt;/span&gt; requirements.txt
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Enable Nova Lite in the Bedrock console (Model access), then run:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python3 demo.py
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;You’ll see the full pipeline — ingest, validate, route, process, format, analyze — against sample feedback data covering all four modalities. The demo discovers images from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;samples/images/&lt;/code&gt; and audio from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;samples/audio/&lt;/code&gt; automatically.&lt;/p&gt;
+
+&lt;p&gt;To run with real AWS services, first generate sample files and upload to S3:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;pip &lt;span class=&quot;nb&quot;&gt;install &lt;/span&gt;Pillow
+python3 generate_samples.py &lt;span class=&quot;nt&quot;&gt;--with-polly&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--upload&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--bucket&lt;/span&gt; YOUR_BUCKET
+python3 demo.py &lt;span class=&quot;nt&quot;&gt;--use-aws&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--bucket&lt;/span&gt; YOUR_BUCKET &lt;span class=&quot;nt&quot;&gt;--region&lt;/span&gt; us-east-1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Textract reads actual text from the generated document images. Transcribe converts real Polly-generated speech back to text. Comprehend analyzes the reviews. Nova Lite ties it all together.&lt;/p&gt;
+
+&lt;h2 id=&quot;deploy-to-aws&quot;&gt;Deploy to AWS&lt;/h2&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;./deploy.sh your-s3-bucket-name
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This packages the Lambda functions, uploads artifacts to S3, and deploys the CloudFormation stack with all the processing infrastructure.&lt;/p&gt;
+
+&lt;h2 id=&quot;tear-down&quot;&gt;Tear Down&lt;/h2&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;aws cloudformation delete-stack &lt;span class=&quot;nt&quot;&gt;--stack-name&lt;/span&gt; customer-feedback-pipeline
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;whats-next&quot;&gt;What’s Next&lt;/h2&gt;
+
+&lt;p&gt;This is Part 3 of an ongoing series. Each project builds on the last:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Part 1&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock&quot;&gt;Insurance Claim Processor&lt;/a&gt;: Bedrock basics, prompt templates, simple RAG&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 2&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-financial-services-ai-assistant-with-amazon-bedrock&quot;&gt;Financial Services AI Assistant&lt;/a&gt;: benchmarking, circuit breakers, cross-region resilience&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 3&lt;/strong&gt; — Customer Feedback Pipeline (this post): multimodal data processing (text, images, audio, surveys)&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 4&lt;/strong&gt; — Knowledge Base RAG System: vector stores, embeddings, document chunking&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 5&lt;/strong&gt; — Advanced Search &amp;amp; Retrieval: hybrid search, reranking, query expansion&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 6&lt;/strong&gt; — AI Support Assistant with Governance: guardrails, prompt management, conversation flows&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 7+&lt;/strong&gt; — Agentic AI, enterprise integration, AI safety, optimization, testing &amp;amp; evaluation&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In Part 4, we take the in-memory &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PolicyKnowledgeBase&lt;/code&gt; from Part 1 and replace it with real vector stores and embeddings using Amazon OpenSearch and Bedrock Knowledge Bases.&lt;/p&gt;
+
+&lt;p&gt;Repository: &lt;a href=&quot;https://github.com/srikanthethiraj/customer-feedback-pipeline&quot;&gt;github.com/srikanthethiraj/customer-feedback-pipeline&lt;/a&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;em&gt;I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on &lt;a href=&quot;https://www.linkedin.com/in/srikanthethiraj/&quot;&gt;LinkedIn&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+</description>
+        <pubDate>Mon, 20 Apr 2026 00:00:00 -0500</pubDate>
+        <link>http://localhost:4000/build-a-customer-feedback-pipeline-with-amazon-bedrock</link>
+        <guid isPermaLink="true">http://localhost:4000/build-a-customer-feedback-pipeline-with-amazon-bedrock</guid>
+        
+        <category>AI</category>
+        
+        <category>AWS</category>
+        
+        <category>Python</category>
+        
+        <category>Bedrock</category>
+        
+        <category>Comprehend</category>
+        
+        <category>Textract</category>
+        
+        <category>Transcribe</category>
+        
+        
+      </item>
     
       <item>
         <title>Build a Financial Services AI Assistant with Amazon Bedrock</title>
@@ -185,7 +1235,7 @@ pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;n
 
 &lt;h2 id=&quot;whats-next&quot;&gt;What’s Next&lt;/h2&gt;
 
-&lt;p&gt;This is Part 2 of a six-part series. Each project builds on the last:&lt;/p&gt;
+&lt;p&gt;This is Part 2 of an ongoing series. Each project builds on the last:&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;&lt;strong&gt;Part 1&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock&quot;&gt;Insurance Claim Processor&lt;/a&gt;: Bedrock basics, prompt templates, simple RAG&lt;/li&gt;
@@ -194,6 +1244,7 @@ pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;n
   &lt;li&gt;&lt;strong&gt;Part 4&lt;/strong&gt; — Knowledge Base RAG System: vector stores, embeddings, document chunking&lt;/li&gt;
   &lt;li&gt;&lt;strong&gt;Part 5&lt;/strong&gt; — Advanced Search &amp;amp; Retrieval: hybrid search, reranking, query expansion&lt;/li&gt;
   &lt;li&gt;&lt;strong&gt;Part 6&lt;/strong&gt; — AI Support Assistant with Governance: guardrails, prompt management, conversation flows&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 7+&lt;/strong&gt; — Agentic AI, enterprise integration, AI safety, optimization, testing &amp;amp; evaluation&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;In Part 3, we move beyond text-only processing and build a pipeline that handles text, images, audio, and surveys — feeding them all into foundation models.&lt;/p&gt;
@@ -343,7 +1394,7 @@ pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;n
 
 &lt;h2 id=&quot;whats-next&quot;&gt;What’s Next&lt;/h2&gt;
 
-&lt;p&gt;This is Part 1 of a six-part series. Each project builds on the last:&lt;/p&gt;
+&lt;p&gt;This is Part 1 of an ongoing series. Each project builds on the last:&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;&lt;strong&gt;Part 2&lt;/strong&gt; — Financial Services AI Assistant: model benchmarking, circuit breakers, cross-region resilience&lt;/li&gt;
@@ -351,6 +1402,7 @@ pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;n
   &lt;li&gt;&lt;strong&gt;Part 4&lt;/strong&gt; — Knowledge Base RAG System: vector stores, embeddings, document chunking&lt;/li&gt;
   &lt;li&gt;&lt;strong&gt;Part 5&lt;/strong&gt; — Advanced Search &amp;amp; Retrieval: hybrid search, reranking, query expansion&lt;/li&gt;
   &lt;li&gt;&lt;strong&gt;Part 6&lt;/strong&gt; — AI Support Assistant with Governance: guardrails, prompt management, conversation flows&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 7+&lt;/strong&gt; — Agentic AI, enterprise integration, AI safety, optimization, testing &amp;amp; evaluation&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;In Part 2, we take the basic &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;compare_models&lt;/code&gt; from this project and build a proper benchmarking framework with dynamic model selection and fault tolerance.&lt;/p&gt;

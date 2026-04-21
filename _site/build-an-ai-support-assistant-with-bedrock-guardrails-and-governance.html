@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Build an AI Support Assistant with Bedrock Guardrails and Governance | Srikanth Ethiraj</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Build an AI Support Assistant with Bedrock Guardrails and Governance" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="In Part 5, we optimized RAG search with hybrid retrieval, reranking, and evaluation metrics. The search is smart. But a smart search engine isn’t a support assistant. It doesn’t know who it is, what it should refuse to answer, or when to hand off to a human." />
+<meta property="og:description" content="In Part 5, we optimized RAG search with hybrid retrieval, reranking, and evaluation metrics. The search is smart. But a smart search engine isn’t a support assistant. It doesn’t know who it is, what it should refuse to answer, or when to hand off to a human." />
+<link rel="canonical" href="http://localhost:4000/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance" />
+<meta property="og:url" content="http://localhost:4000/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance" />
+<meta property="og:site_name" content="Srikanth Ethiraj" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-28T00:00:00-05:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Build an AI Support Assistant with Bedrock Guardrails and Governance" />
+<meta name="twitter:site" content="@" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-04-28T00:00:00-05:00","datePublished":"2026-04-28T00:00:00-05:00","description":"In Part 5, we optimized RAG search with hybrid retrieval, reranking, and evaluation metrics. The search is smart. But a smart search engine isn’t a support assistant. It doesn’t know who it is, what it should refuse to answer, or when to hand off to a human.","headline":"Build an AI Support Assistant with Bedrock Guardrails and Governance","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance"},"url":"http://localhost:4000/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance"}</script>
+<!-- End Jekyll SEO tag -->
+
+    
+
+    <!-- Site Favicon -->
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/initials.png" type="image/png" />
+
+    <!-- Font Embed Code -->
+    <link href="https://fonts.googleapis.com/css?family=Crimson+Text:400,400i,600,600i|Karla:400,400i,700,700i"
+        rel="stylesheet">
+
+    <!-- CSS Styles -->
+    <link href="/assets/css/style.css" rel="stylesheet">
+</head>
+
+
+
+<body class="layout-post">
+    <div id="page" class="site">
+        <header id="masthead" class="site-header">
+    <div class="site-header-wrap">
+        <div class="site-header-inside">
+
+            <div class="site-branding">
+                
+                <p class="profile">
+                    <a href="/">
+                        <img src="/assets/images/authorimage.jpg" alt="'s Picture"
+                            class="avatar" />
+                    </a>
+                </p>
+                <div class="site-identity">
+                    
+                    <h1 class="site-title">
+                        <a href="/">Srikanth Ethiraj</a>
+                    </h1>
+                    
+                    
+                    <p class="site-description">Building AI applications on AWS — one project at a time.</p>
+                    
+                </div><!-- .site-identity -->
+                
+                <button id="menu-toggle" class="menu-toggle"><span class="screen-reader-text">Main Menu</span><span
+                        class="icon-menu" aria-hidden="true"></span></button>
+            </div><!-- .site-branding -->
+
+            <nav id="main-navigation" class="site-navigation" aria-label="Main Navigation">
+                <div class="site-nav-wrap">
+                    <div class="site-nav-inside">
+                    <ul class="menu">
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/">Home</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/about">About</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/contact">Contact Me</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/search">Search</a></li>
+                        
+                    </ul>
+                    <p class="social-links">
+    
+    <a href="https://twitter.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+    <a href="https://github.com/srikantheee84" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+    
+    
+    <a href="https://www.instagram.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    <a href="https://www.pinterest.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M496 256c0 137-111 248-248 248-25.6 0-50.2-3.9-73.4-11.1 10.1-16.5 25.2-43.5 30.8-65 3-11.6 15.4-59 15.4-59 8.1 15.4 31.7 28.5 56.8 28.5 74.8 0 128.7-68.8 128.7-154.3 0-81.9-66.9-143.2-152.9-143.2-107 0-163.9 71.8-163.9 150.1 0 36.4 19.4 81.7 50.3 96.1 4.7 2.2 7.2 1.2 8.3-3.3.8-3.4 5-20.3 6.9-28.1.6-2.5.3-4.7-1.7-7.1-10.1-12.5-18.3-35.3-18.3-56.6 0-54.7 41.4-107.6 112-107.6 60.9 0 103.6 41.5 103.6 100.9 0 67.1-33.9 113.6-78 113.6-24.3 0-42.6-20.1-36.7-44.8 7-29.5 20.5-61.3 20.5-82.6 0-19-10.2-34.9-31.4-34.9-24.9 0-44.9 25.7-44.9 60.2 0 22 7.4 36.8 7.4 36.8s-24.5 103.8-29 123.2c-5 21.4-3 51.6-.9 71.2C65.4 450.9 0 361.1 0 256 0 119 111 8 248 8s248 111 248 248z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    <a href="https://www.linkedin.com/in/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+</p>
+                    </div><!-- .site-nav-inside -->
+                </div><!-- .site-nav-wrap -->
+            </nav><!-- .site-navigation -->
+
+        </div><!-- .site-header-inside -->
+    </div><!-- .site-header-wrap -->
+</header><!-- .site-header -->
+        <div id="content" class="site-content fadeInDown delay_075s">
+            <div class="inner-wide">
+                <main id="main" class="site-main">
+    <article class="post-full inner">
+        <header class="post-header">
+            <div class="post-meta">
+                <time class="post-date" datetime=" 2026-04-28">
+                    April 28, 2026
+                </time>
+            </div><!-- .post-meta -->
+            <h1 class="post-title">Build an AI Support Assistant with Bedrock Guardrails and Governance</h1>
+            
+            <p class="post-tags">
+                <a href="/tags/index.html#AI"
+                    rel="tag">AI</a>
+                <a href="/tags/index.html#AWS"
+                    rel="tag">AWS</a>
+                <a href="/tags/index.html#Python"
+                    rel="tag">Python</a>
+                <a href="/tags/index.html#Bedrock"
+                    rel="tag">Bedrock</a>
+                <a href="/tags/index.html#Guardrails"
+                    rel="tag">Guardrails</a>
+                <a href="/tags/index.html#Comprehend"
+                    rel="tag">Comprehend</a>
+                <a href="/tags/index.html#DynamoDB"
+                    rel="tag">DynamoDB</a>
+                
+            </p>
+            
+        </header><!-- .post-header -->
+        
+        <div class="post-thumbnail">
+            <img src="assets/images/posts/2026/article-6-hero.jpeg" alt="Build an AI Support Assistant with Bedrock Guardrails and Governance">
+        </div>
+        
+        <div class="post-content">
+            <p>In Part 5, we optimized RAG search with hybrid retrieval, reranking, and evaluation metrics. The search is smart. But a smart search engine isn’t a support assistant. It doesn’t know who it is, what it should refuse to answer, or when to hand off to a human.</p>
+
+<p>Imagine you’re running a SaaS company. You deploy a chatbot to handle customer support. Day one, it answers billing questions beautifully. Day two, a customer asks for legal advice and the bot happily obliges. Day three, someone pastes their credit card number into the chat and the bot echoes it back in the response. Day four, an angry customer demands a human and the bot keeps trying to help.</p>
+
+<p>This project builds the governance layer that prevents all of that. Persona management that defines who the assistant is and what it won’t do. Guardrails that block off-topic requests and redact PII before it reaches the model. Intent detection that routes angry customers to humans instead of chatbots. And edge case testing that proves it all works before you go live.</p>
+
+<!--more-->
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>Every company deploying an AI assistant faces the same risks. The model is smart enough to answer almost anything — and that’s the problem.</p>
+
+<p>In Part 1, our <code class="language-plaintext highlighter-rouge">PromptTemplateManager</code> was a Python class with <code class="language-plaintext highlighter-rouge">{variable}</code> substitution. No versioning, no persona, no safety controls. The <code class="language-plaintext highlighter-rouge">ContentValidator</code> redacted PII with regex — fine for a demo, but not how you’d protect a production system handling real customer data.</p>
+
+<p>A real support assistant needs to know its role boundaries. It needs to refuse off-topic questions. It needs to detect when a customer is angry and escalate to a human. It needs to redact PII before it ever reaches the model. And you need to test all of this systematically — not deploy and hope for the best.</p>
+
+<h2 id="the-pattern">The Pattern</h2>
+
+<p><strong>Guardrail → Detect Intent → Build Prompt → Generate → Filter Output → Track History</strong></p>
+
+<p>Every query flows through safety checks before and after generation. The assistant never sees raw PII. Off-topic requests are blocked before they reach the model. Angry customers get routed to humans, not chatbots.</p>
+
+<h2 id="architecture">Architecture</h2>
+
+<p><img src="/assets/images/posts/2026/article-6-architecture.png" alt="AI Support Assistant Architecture" /></p>
+
+<p>The assistant is a single pipeline: customer query → guardrails → intent detection → prompt building with persona and history → Nova Lite generation → output filtering → conversation storage.</p>
+
+<h2 id="how-it-works--six-phases">How It Works — Six Phases</h2>
+
+<h3 id="phase-1-prompt-management">Phase 1: Prompt Management</h3>
+
+<p>The assistant has a defined persona — role, boundaries, tone, and response format. This isn’t a system prompt you paste into a chat window. It’s a versioned configuration that can be stored in S3, loaded at runtime, and updated without redeployment.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Persona: AWS Support Assistant
+Role: You are a helpful AWS technical support assistant.
+Boundaries:
+  - Only answer questions about AWS services and cloud computing.
+  - Do not provide financial advice, legal advice, or medical advice.
+  - Do not share internal AWS information or pricing not publicly available.
+  - If you don't know the answer, say so clearly and suggest contacting AWS Support.
+</code></pre></div></div>
+
+<p>Different intents get different prompt templates. A troubleshooting query gets a template that asks for step-by-step guidance. A vague query gets a template that asks clarifying questions. A handoff gets a template that summarizes the issue for the human agent.</p>
+
+<p>Part 1’s <code class="language-plaintext highlighter-rouge">PromptTemplateManager</code> had one template with <code class="language-plaintext highlighter-rouge">{variable}</code> slots. This system has four templates, a persona definition, and version control.</p>
+
+<h3 id="phase-2-guardrails">Phase 2: Guardrails</h3>
+
+<p>Every input is checked before it reaches the model. Every output is checked before it reaches the customer.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Normal query: ✅ ALLOWED
+  "How do I reset my password?"
+
+Denied topic: 🚫 BLOCKED
+  "What's the competitor pricing for Zendesk?"
+  Reason: Denied topic detected: competitor pricing
+
+PII in input: ✅ ALLOWED (FILTERED)
+  "My SSN is 123-45-6789 and I need help"
+  Filtered: "My SSN is [REDACTED-SSN] and I need help"
+
+AWS key leak: ✅ ALLOWED (FILTERED)
+  "My key is AKIAIOSFODNN7EXAMPLE"
+  Filtered: "My key is [REDACTED-AWS_KEY]"
+</code></pre></div></div>
+
+<p>The guardrails catch denied topics (competitor pricing, internal roadmaps, medical/legal advice), detect and redact PII (SSNs, credit cards, AWS keys, emails, phone numbers), and filter problematic phrases from output.</p>
+
+<p>Part 1’s <code class="language-plaintext highlighter-rouge">ContentValidator</code> did PII redaction with regex. This system adds topic detection, input/output separation, and AWS credential detection.</p>
+
+<h3 id="phase-3-intent-detection--sentiment">Phase 3: Intent Detection &amp; Sentiment</h3>
+
+<p>Every query is classified by intent and sentiment before the prompt is built. This determines which template to use and whether to escalate.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Query                                              Intent             Sentiment
+My invoice shows a charge I don't recognize         billing            negative
+How do I add a new team member?                    how_to             neutral
+Why is the dashboard loading so slowly?            troubleshooting    negative
+I can't log into my account                        account            negative
+Help                                               general            neutral
+This is terrible, nothing works!                   general            negative
+</code></pre></div></div>
+
+<p>Low-confidence intents trigger clarification. Negative sentiment with escalation phrases triggers human handoff. The assistant adapts its behavior based on what it detects.</p>
+
+<h3 id="phase-4-multi-turn-conversation">Phase 4: Multi-Turn Conversation</h3>
+
+<p>The assistant remembers what was discussed. Each conversation is stored with a TTL for automatic cleanup.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Turn 1:
+  Customer: How do I upgrade my subscription plan?
+  Assistant: To upgrade your plan, go to Settings → Billing → Change Plan.
+             You'll see the available tiers with pricing. The upgrade takes
+             effect immediately and you'll be prorated for the current month...
+
+Turn 2:
+  Customer: What about adding more team members on the new plan?
+  Assistant: On the upgraded plan, you can add team members under
+             Settings → Team → Invite. Each additional seat is billed
+             monthly based on your plan tier...
+
+Turn 3:
+  Customer: Can you show me the pricing for that?
+  Assistant: Here's the per-seat pricing for each plan tier:
+             Starter: $10/seat/month, Professional: $25/seat/month,
+             Enterprise: custom pricing...
+</code></pre></div></div>
+
+<p>Turn 2 understands “the new plan” because it has the conversation history. Turn 3 knows “that” refers to per-seat pricing. Without history, each turn would be a disconnected question.</p>
+
+<h3 id="phase-5-edge-case-testing">Phase 5: Edge Case Testing</h3>
+
+<p>Six scenarios that test the assistant’s governance controls under pressure.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Scenario                    Result    Latency
+Angry customer              ✅ PASS      922ms
+Vague request               ✅ PASS     1575ms
+Off-topic (denied topic)    ✅ PASS        0ms
+PII in input                ✅ PASS     2100ms
+Technical troubleshooting   ✅ PASS     3495ms
+Multi-turn context          ✅ PASS     3844ms
+
+Results: 6/6 passed
+</code></pre></div></div>
+
+<p>The angry customer gets routed to a human agent. The vague request gets a clarifying question. The off-topic query is blocked instantly (0ms — never reaches the model). PII is redacted before generation. Technical queries get step-by-step troubleshooting. Multi-turn queries use conversation context.</p>
+
+<h3 id="phase-6-fallback--human-handoff">Phase 6: Fallback &amp; Human Handoff</h3>
+
+<p>When the model fails or the customer demands a human, the assistant degrades gracefully.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Angry customer escalation:
+  Intent: handoff
+  Response: I understand your frustration, and I'm here to help.
+            I'll connect you with a human agent who can assist you further.
+            To give them a head start, your issue seems to be urgent
+            and requires immediate personal attention...
+</code></pre></div></div>
+
+<p>The handoff includes a summary of the customer’s issue so the human agent has context. The customer never gets an error message or a blank screen.</p>
+
+<h2 id="what-changed-from-part-1">What Changed from Part 1</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Concept</th>
+      <th>Part 1 (Insurance Claim Processor)</th>
+      <th>Part 6 (This Project)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Prompt management</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">PromptTemplateManager</code> — Python class with <code class="language-plaintext highlighter-rouge">{variable}</code> slots</td>
+      <td>Versioned persona + 4 intent-specific templates + S3 storage</td>
+    </tr>
+    <tr>
+      <td><strong>Safety controls</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">ContentValidator</code> — PII regex redaction</td>
+      <td>Guardrails: topic detection, PII redaction, AWS key detection, output filtering</td>
+    </tr>
+    <tr>
+      <td><strong>Conversation</strong></td>
+      <td>Single-turn only</td>
+      <td>Multi-turn with DynamoDB history and TTL</td>
+    </tr>
+    <tr>
+      <td><strong>Intent handling</strong></td>
+      <td>None — same prompt for everything</td>
+      <td>Intent detection + sentiment analysis + routing</td>
+    </tr>
+    <tr>
+      <td><strong>Error handling</strong></td>
+      <td>Retry with backoff</td>
+      <td>Fallback responses + human handoff</td>
+    </tr>
+    <tr>
+      <td><strong>Testing</strong></td>
+      <td>None</td>
+      <td>Edge case framework: 6 scenarios, automated pass/fail</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="getting-started">Getting Started</h2>
+
+<p>Prerequisites: Python 3.10+, AWS CLI configured, Bedrock model access for Nova Lite.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/srikanthethiraj/ai-support-assistant.git
+<span class="nb">cd </span>ai-support-assistant
+python3 <span class="nt">-m</span> venv venv
+<span class="nb">source </span>venv/bin/activate
+pip <span class="nb">install</span> <span class="nt">-r</span> requirements.txt
+</code></pre></div></div>
+
+<p>Run the demo:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python demo.py <span class="nt">--region</span> us-east-1
+</code></pre></div></div>
+
+<p>You’ll see all six phases — prompt management, guardrails, intent detection, multi-turn conversation, edge case testing, and fallback/handoff.</p>
+
+<p>No infrastructure to deploy for the local demo. The in-memory conversation store handles history without DynamoDB.</p>
+
+<h2 id="tear-down">Tear Down</h2>
+
+<p>No infrastructure to tear down for the local demo. If you deployed the DynamoDB table for production use:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aws dynamodb delete-table <span class="nt">--table-name</span> assistant-conversations <span class="nt">--region</span> us-east-1
+</code></pre></div></div>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>This is Part 6 of an ongoing series:</p>
+
+<ul>
+  <li><strong>Part 1</strong> — <a href="https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock">Insurance Claim Processor</a>: Bedrock basics, prompt templates, simple RAG</li>
+  <li><strong>Part 2</strong> — <a href="https://blog.srikanthethiraj.com/build-a-financial-services-ai-assistant-with-amazon-bedrock">Financial Services AI Assistant</a>: benchmarking, circuit breakers, cross-region resilience</li>
+  <li><strong>Part 3</strong> — <a href="https://blog.srikanthethiraj.com/build-a-customer-feedback-pipeline-with-amazon-bedrock">Customer Feedback Pipeline</a>: multimodal data processing</li>
+  <li><strong>Part 4</strong> — <a href="https://blog.srikanthethiraj.com/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch">RAG Knowledge Base</a>: vector stores, embeddings, document chunking</li>
+  <li><strong>Part 5</strong> — <a href="https://blog.srikanthethiraj.com/optimize-rag-search-with-hybrid-retrieval-and-reranking-on-aws">Advanced Search &amp; Retrieval</a>: hybrid search, reranking, query expansion</li>
+  <li><strong>Part 6</strong> — AI Support Assistant with Governance (this post): guardrails, prompt management, conversation flows</li>
+  <li><strong>Part 7</strong> — Agentic AI — Strands Agents, Bedrock AgentCore &amp; Multi-Agent Systems</li>
+  <li><strong>Part 8</strong> — Multi-Tier Model Deployment &amp; Enterprise Integration</li>
+  <li><strong>Part 9</strong> — AI Safety — Guardrails, PII Protection &amp; Threat Detection</li>
+  <li><strong>Part 10</strong> — Cost &amp; Latency Optimization for GenAI</li>
+  <li><strong>Part 11</strong> — AI Governance — Compliance, Fairness &amp; Model Cards</li>
+  <li><strong>Part 12</strong> — Testing, Evaluation &amp; Troubleshooting GenAI Systems</li>
+</ul>
+
+<p>In Part 7, we’ll dive into agentic AI — building agents with the Strands SDK, deploying them on Bedrock AgentCore, and orchestrating multi-agent systems that reason about which action to take.</p>
+
+<p>Repository: <a href="https://github.com/srikanthethiraj/ai-support-assistant">github.com/srikanthethiraj/ai-support-assistant</a></p>
+
+<hr />
+
+<p><em>I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on <a href="https://www.linkedin.com/in/srikanthethiraj/">LinkedIn</a>.</em></p>
+
+        </div>
+        <footer class="post-footer">
+            <div class="post-share">
+                <span class="post-share-title">Share:</span>
+                <a target="_blank"
+                    href="https://twitter.com/share?text=Build+an+AI+Support+Assistant+with+Bedrock+Guardrails+and+Governance&amp;url=https://blog.srikanthethiraj.com/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance">Twitter</a>
+                <a target="_blank"
+                    href="https://www.facebook.com/sharer/sharer.php?u=https://blog.srikanthethiraj.com/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance">Facebook</a>
+            </div><!-- .share-post -->
+        </footer>
+        
+<section id="comments-area" class="comments-area">
+    <h2 class="comments-title">Comments</h2>
+    <div class="comments-inside">
+        <div id="disqus_thread"></div>
+    </div><!-- .comments-inside -->
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by
+            Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</section><!-- .comments-area -->
+<script type="text/javascript">
+    var disqus_shortname = 'justgoodthemes';
+    var disqus_developer = 0;
+    (function () {
+        var dsq = document.createElement('script');
+        dsq.type = 'text/javascript';
+        dsq.async = true;
+        dsq.src = window.location.protocol + '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+
+    </article>
+    
+    <section class="newsletter-box inner">
+    <h2 class="newsletter-box-title">Subscribe to Srikanth Ethiraj newsletter</h2>
+    <p>Get the latest and greatest from Srikanth Ethiraj delivered straight to your inbox every week.</p>
+    <!-- Begin MailChimp Signup Form -->
+    <div id="mc_embed_signup">
+        <form action="https://srikanthethiraj.us19.list-manage.com/subscribe/post?u=42acdd8bd6be3355d0c6df855&amp;id=72ab533508&amp;f_id=00c336e3f0" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form"
+            class="validate gh-subscribe-form" target="_blank" novalidate>
+            <label for="mce-EMAIL" class="screen-reader-text">Email Address</label>
+            <input type="email" value="" name="EMAIL" class="required email subscribe-email" id="mce-EMAIL" placeholder="Your email address">
+            <input type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe" class="button">
+        </form>
+    </div>
+    <!--End mc_embed_signup-->
+</section><!-- .widget -->
+    
+    <section class="read-next inner">
+        <h2 class="read-next-title">Read Next</h2>
+        
+        <article class="post">
+            <header class="post-header">
+                <div class="post-meta">
+                    <time class="published" datetime="April 24, 2026">April 24, 2026</time>
+                </div>
+                <h3 class="post-title"><a href="/optimize-rag-search-with-hybrid-retrieval-and-reranking-on-aws">Optimize RAG Search with Hybrid Retrieval and Reranking on AWS</a>
+                </h3>
+                <p class="post-tags">
+
+                    
+                    <a
+                        href="/tags/index.html#AI" rel="tag">AI</a><a
+                        href="/tags/index.html#AWS" rel="tag">AWS</a><a
+                        href="/tags/index.html#Python" rel="tag">Python</a><a
+                        href="/tags/index.html#Bedrock" rel="tag">Bedrock</a><a
+                        href="/tags/index.html#OpenSearch" rel="tag">OpenSearch</a><a
+                        href="/tags/index.html#RAG" rel="tag">RAG</a><a
+                        href="/tags/index.html#Embeddings" rel="tag">Embeddings</a><a
+                        href="/tags/index.html#Search" rel="tag">Search</a>
+                    
+
+                </p>
+            </header>
+        </article>
+        
+        
+    </section><!-- .read-next -->
+    <!-- Create a sorted array of tags -->
+     
+    <section class="tagcloud inner">
+        <h2 class="tagcloud-title">Tags</h2>
+        <div class="tag-links">
+            
+            <a href='/tags/#AI'>AI</a>
+            
+            <a href='/tags/#AWS'>AWS</a>
+            
+            <a href='/tags/#Bedrock'>Bedrock</a>
+            
+            <a href='/tags/#Comprehend'>Comprehend</a>
+            
+            <a href='/tags/#DynamoDB'>DynamoDB</a>
+            
+            <a href='/tags/#Embeddings'>Embeddings</a>
+            
+            <a href='/tags/#Guardrails'>Guardrails</a>
+            
+            <a href='/tags/#Lambda'>Lambda</a>
+            
+            <a href='/tags/#OpenSearch'>OpenSearch</a>
+            
+            <a href='/tags/#Python'>Python</a>
+            
+            <a href='/tags/#RAG'>RAG</a>
+            
+            <a href='/tags/#Search'>Search</a>
+            
+            <a href='/tags/#StepFunctions'>StepFunctions</a>
+            
+            <a href='/tags/#Textract'>Textract</a>
+            
+            <a href='/tags/#Transcribe'>Transcribe</a>
+            
+        </div><!-- .tag-links -->
+    </section><!-- .tagcloud -->
+</main><!-- .site-main -->
+
+                
+
+                <footer id="colophon" class="site-footer">
+    <p class="site-info inner">
+        <a href="#">Srikanth Ethiraj</a> &copy; 2026. Royce theme by
+        <a target="_blank" href="https://justgoodthemes.com/">JustGoodThemes</a>.
+        <br />
+        Powered by <a target="_blank" href="https://jekyllrb.com/">Jekyll</a>.
+    </p>
+    <a id="back-to-top" class="back-to-top" href="#page">
+        <span class="icon-arrow-up" aria-hidden="true"></span>
+        <span class="screen-reader-text">Back to top</span>
+    </a>
+</footer><!-- .site-footer -->
+            </div><!-- .inner-wide -->
+        </div><!-- .site-content -->
+    </div><!-- .site -->
+
+    
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX', { 'anonymize_ip': true });
+  </script>
+
+    <!-- Javascript Assets -->
+    <script src="/assets/js/jquery-3.3.1.min.js"></script>
+    <script src="/assets/js/plugins.js"></script>
+    <script src="/assets/js/custom.js"></script>
+
+</body>
+
+</html>
