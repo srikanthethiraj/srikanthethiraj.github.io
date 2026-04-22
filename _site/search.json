@@ -1,6 +1,14 @@
 [
   
     {
+      "title"    : "Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock",
+      "category" : "",
+      "tags"     : "AI, AWS, Python, Bedrock, Strands, Agents, AgentCore",
+      "url"      : "/build-a-multi-agent-support-system-with-strands-agents-and-bedrock",
+      "date"     : "April 30, 2026"
+    } ,
+  
+    {
       "title"    : "Build an AI Support Assistant with Bedrock Guardrails and Governance",
       "category" : "",
       "tags"     : "AI, AWS, Python, Bedrock, Guardrails, Comprehend, DynamoDB",

@@ -5,9 +5,344 @@
     <description>Building AI applications on AWS — one project at a time.</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Mon, 20 Apr 2026 22:18:52 -0500</pubDate>
-    <lastBuildDate>Mon, 20 Apr 2026 22:18:52 -0500</lastBuildDate>
+    <pubDate>Tue, 21 Apr 2026 22:01:42 -0500</pubDate>
+    <lastBuildDate>Tue, 21 Apr 2026 22:01:42 -0500</lastBuildDate>
     <generator>Jekyll v4.4.1</generator>
+    
+      <item>
+        <title>Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock</title>
+        <description>&lt;p&gt;In Part 6, we built a support assistant with guardrails, intent detection, and conversation history. It worked — but the routing was Python keyword matching. “Charge” goes to billing. “Password” goes to account. Simple, brittle, and wrong the moment a customer says “I got billed double” instead of “I was charged twice.”&lt;/p&gt;
+
+&lt;p&gt;Your e-commerce company gets 200+ support tickets a day. Billing disputes, shipping problems, account issues — often multiple problems in the same message. “I was charged twice for my yoga mat AND I received the wrong color.” That’s two agents, not one. Keyword matching can’t handle it.&lt;/p&gt;
+
+&lt;p&gt;This project replaces manual routing with agents that reason. A supervisor agent reads the customer’s message, understands the intent, and delegates to specialized agents — each with their own tools and expertise. And it shows you three ways to build it: Bedrock Agents for prototyping, Strands for production code, and AgentCore for deployment at scale.&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;the-problem&quot;&gt;The Problem&lt;/h2&gt;
+
+&lt;p&gt;A real support team doesn’t have one person who handles everything. It has specialists — someone for billing, someone for shipping, someone for accounts. When a customer calls with multiple issues, the receptionist figures out who to involve and routes accordingly.&lt;/p&gt;
+
+&lt;p&gt;Part 6’s assistant tried to be all three specialists at once. One system prompt, one set of tools, keyword-based routing. It couldn’t handle “I was charged twice AND my package is late” because that’s two specialists, not one.&lt;/p&gt;
+
+&lt;p&gt;You need a system where each specialist is an independent agent with its own tools, and a supervisor that understands natural language well enough to route correctly — even when the customer’s message spans multiple domains.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-pattern&quot;&gt;The Pattern&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;Customer → Supervisor (reasons about routing) → Specialist Agent(s) → Tools → Response&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;The supervisor doesn’t use rules. It uses an LLM to read the message, understand the intent, and decide which agents to involve. The specialist agents don’t share tools — each one has exactly the tools it needs for its domain.&lt;/p&gt;
+
+&lt;h2 id=&quot;three-ways-to-build-agents-on-aws&quot;&gt;Three Ways to Build Agents on AWS&lt;/h2&gt;
+
+&lt;p&gt;Before diving into the code, here’s the landscape. AWS offers three approaches to building agents, and they’re not alternatives — they’re layers:&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Bedrock Agents (Managed Prototype)&lt;/strong&gt;
+Configure an agent in the console or via API. AWS handles the orchestration loop, session memory, and scaling. Fast to set up, but you can’t customize the reasoning, and each action group requires a Lambda function. Best for: quick prototypes and simple single-purpose agents.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Strands Agents SDK (Code-First Build)&lt;/strong&gt;
+Open-source Python SDK. You write the agent logic — tools as Python functions, system prompts, reasoning patterns. The agent decides which tools to use based on the prompt. Full control, local testing, fast iteration. Best for: custom agents, multi-agent systems, production code.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Amazon Bedrock AgentCore (Production Deployment)&lt;/strong&gt;
+Managed infrastructure for running agents at scale. Takes your Strands agent (or any framework), wraps it as an HTTP service, and handles compute, scaling, identity, memory, and observability. Best for: deploying agents to production without managing servers.&lt;/p&gt;
+
+&lt;p&gt;The progression: Prototype (Bedrock Agents) → Build (Strands) → Deploy (AgentCore).&lt;/p&gt;
+
+&lt;h2 id=&quot;architecture&quot;&gt;Architecture&lt;/h2&gt;
+
+&lt;p&gt;The complete flow: customer message enters the supervisor, which routes to the right specialist agent(s). Each agent has its own tools. Responses go back to the customer. Sensitive actions (refunds over $50, angry customers) escalate to human review.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/posts/2026/article-7-architecture.png&quot; alt=&quot;Multi-Agent Support System&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;how-the-supervisor-knows-what-to-do&quot;&gt;How the Supervisor Knows What to Do&lt;/h2&gt;
+
+&lt;p&gt;This is the key question. The supervisor agent doesn’t have routing rules or keyword matching. It has a system prompt that defines the available agents and their responsibilities:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ORDER AGENT — for: package tracking, shipping status, order cancellation, returns, wrong items
+BILLING AGENT — for: payment questions, charges, refunds, duplicate charges, pricing
+ACCOUNT AGENT — for: login issues, password resets, email/phone/address changes, app problems
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Claude reads the customer’s message, reasons about which categories the issue falls into, and returns a JSON routing decision:&lt;/p&gt;
+
+&lt;div class=&quot;language-json highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+    &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;agents&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;billing&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;order&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+    &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;reasoning&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;Customer was charged twice (billing) AND received wrong item (order)&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+    &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;priority&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;high&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+    &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;needs_human_review&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The intelligence is in the reasoning. “I got billed double” routes to billing even though the word “charge” never appears. “My package vanished” routes to order even though “shipping” isn’t mentioned. The LLM understands meaning, not keywords.&lt;/p&gt;
+
+&lt;p&gt;This is the fundamental difference from Article 6. Article 6: you write the routing rules. Article 7: the agent writes its own routing decisions.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-it-works--the-agent-evolution&quot;&gt;How It Works — The Agent Evolution&lt;/h2&gt;
+
+&lt;p&gt;Each phase builds on the previous one’s limitation.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-1-bedrock-agents--the-quick-prototype&quot;&gt;Phase 1: Bedrock Agents — The Quick Prototype&lt;/h3&gt;
+
+&lt;p&gt;You can configure an order tracking agent in minutes using the Bedrock Agents API. Define the agent, add an action group with three actions (TrackOrder, LookupHistory, CancelOrder), and AWS handles the orchestration.&lt;/p&gt;
+
+&lt;p&gt;It works for simple, single-purpose agents. But you can’t customize the reasoning loop, you can’t test locally without deploying infrastructure, and adding a second agent type means creating a whole new managed agent.&lt;/p&gt;
+
+&lt;p&gt;When you need more control, that’s where Strands comes in.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-2-strands-agents--full-code-control&quot;&gt;Phase 2: Strands Agents — Full Code Control&lt;/h3&gt;
+
+&lt;p&gt;Same order tracking agent, rebuilt with Strands. Tools are Python functions decorated with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;@tool&lt;/code&gt;. The agent decides which tools to call based on the customer’s message.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Customer: Where is my order ORD-50435?
+Agent: [calls track_order] → Your order is in transit with FedEx.
+       Tracking: 794644790132. Estimated delivery: April 23rd.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The agent looked up the order, found the FedEx tracking number, and gave a specific answer with dates. No hardcoded responses — the tool returned real data and the agent formatted it naturally.&lt;/p&gt;
+
+&lt;p&gt;Single agents work great for focused tasks. But real customers have multi-part problems.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-3-multi-agent-orchestration&quot;&gt;Phase 3: Multi-Agent Orchestration&lt;/h3&gt;
+
+&lt;p&gt;Three specialist agents, each with their own tools:&lt;/p&gt;
+
+&lt;p&gt;Order Agent — &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;track_order&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lookup_order_history&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cancel_order&lt;/code&gt;
+Billing Agent — &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;check_payment_status&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;process_refund&lt;/code&gt;
+Account Agent — &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lookup_customer&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;reset_password&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update_account_info&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;A supervisor agent routes incoming requests. When a customer says “I was charged twice AND I received the wrong color,” the supervisor delegates to both billing and order agents:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Supervisor: Routes to [billing, order] — &quot;Two issues: duplicate charge + wrong item&quot;
+
+Billing Agent: Found duplicate charge of $167.76. Refund submitted
+               for manager approval (over $50 threshold).
+
+Order Agent: Confirmed wrong item flag on ORD-50398. Escalated to
+             fulfillment team for correct color shipment.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Both agents worked independently on their part of the problem, using their own tools and domain knowledge.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-4-human-in-the-loop&quot;&gt;Phase 4: Human-in-the-Loop&lt;/h3&gt;
+
+&lt;p&gt;Some actions are too risky for full automation. Refunds over $50 require manager approval. Angry customers get escalated to humans.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Customer: I need a full refund of $167.76.
+
+Billing Agent: Refund submitted → PENDING APPROVAL (exceeds $50 threshold)
+Supervisor: ⚠️ FLAGGED FOR HUMAN REVIEW
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The agent doesn’t just process the refund blindly. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;process_refund&lt;/code&gt; tool has a built-in threshold — amounts over $50 return a “pending_approval” status. The supervisor also flags the ticket independently based on the refund amount and customer sentiment.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-5-agentcore--production-deployment&quot;&gt;Phase 5: AgentCore — Production Deployment&lt;/h3&gt;
+
+&lt;p&gt;Everything works locally. But how do you run it in production with auto-scaling, identity, and observability?&lt;/p&gt;
+
+&lt;p&gt;AgentCore takes your Strands agent and deploys it as a managed service. The code change is minimal — wrap your agent function with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;@app.entrypoint&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bedrock_agentcore.runtime&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BedrockAgentCoreApp&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;strands&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Agent&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;app&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;BedrockAgentCoreApp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;agent&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Agent&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tools&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[...],&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;system_prompt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;...&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;nd&quot;&gt;@app.entrypoint&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;invoke&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;agent&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;prompt&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;result&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Test locally with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;python agent_app.py&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;curl&lt;/code&gt;. Deploy with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;agentcore deploy --agent-name ecommerce-support&lt;/code&gt;. AgentCore handles compute, scaling, IAM roles, session memory, and CloudWatch observability.&lt;/p&gt;
+
+&lt;h2 id=&quot;real-results--8-tickets-end-to-end&quot;&gt;Real Results — 8 Tickets End-to-End&lt;/h2&gt;
+
+&lt;p&gt;We ran all 8 sample tickets through the full system — supervisor routing, sub-agent execution, tool calls, and response generation:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Ticket     Agents              Review    Latency
+TKT-001    order                   No    10601ms
+TKT-002    billing            ⚠️ YES    10902ms
+TKT-003    account                 No    12471ms
+TKT-004    billing,order      ⚠️ YES    22593ms
+TKT-005    billing,order      ⚠️ YES    23603ms
+TKT-006    order                   No    10633ms
+TKT-007    account                 No    12405ms
+TKT-008    account                 No    14047ms
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Every ticket routed correctly. Multi-issue tickets (TKT-004, TKT-005) went to multiple agents. Money-related issues got flagged for human review. The supervisor considered customer loyalty tier — Platinum customers with billing issues got higher priority.&lt;/p&gt;
+
+&lt;h2 id=&quot;when-to-use-what&quot;&gt;When to Use What&lt;/h2&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt; &lt;/th&gt;
+      &lt;th&gt;Bedrock Agents&lt;/th&gt;
+      &lt;th&gt;Strands Agents&lt;/th&gt;
+      &lt;th&gt;AgentCore&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Best for&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Quick prototype&lt;/td&gt;
+      &lt;td&gt;Custom build&lt;/td&gt;
+      &lt;td&gt;Production deployment&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Control&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Low — AWS manages&lt;/td&gt;
+      &lt;td&gt;Full — you own the code&lt;/td&gt;
+      &lt;td&gt;Full — any framework&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Local testing&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Hard — needs infrastructure&lt;/td&gt;
+      &lt;td&gt;Easy — runs locally&lt;/td&gt;
+      &lt;td&gt;Easy — runs on port 8080&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Multi-agent&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Separate managed agents&lt;/td&gt;
+      &lt;td&gt;Native orchestration&lt;/td&gt;
+      &lt;td&gt;Deploy any agent&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Cost&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Pay per invocation&lt;/td&gt;
+      &lt;td&gt;Model costs only&lt;/td&gt;
+      &lt;td&gt;Runtime + model costs&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;The progression: Prototype with Bedrock Agents to validate the idea. Build with Strands when you need custom tools and multi-agent orchestration. Deploy with AgentCore when you’re ready for production.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-changed-from-part-6&quot;&gt;What Changed from Part 6&lt;/h2&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Concept&lt;/th&gt;
+      &lt;th&gt;Part 6 (AI Support Assistant)&lt;/th&gt;
+      &lt;th&gt;Part 7 (This Project)&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Routing&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Python keyword matching&lt;/td&gt;
+      &lt;td&gt;LLM-based supervisor reasoning&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Agents&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;One agent does everything&lt;/td&gt;
+      &lt;td&gt;Three specialists + supervisor&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Tools&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Shared across all intents&lt;/td&gt;
+      &lt;td&gt;Domain-specific per agent&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Multi-issue&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Can’t handle&lt;/td&gt;
+      &lt;td&gt;Supervisor delegates to multiple agents&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Framework&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Raw Bedrock Converse API&lt;/td&gt;
+      &lt;td&gt;Strands Agents SDK&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Deployment&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Local only&lt;/td&gt;
+      &lt;td&gt;AgentCore production-ready&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2 id=&quot;getting-started&quot;&gt;Getting Started&lt;/h2&gt;
+
+&lt;p&gt;Prerequisites: Python 3.10+, AWS CLI configured, Bedrock model access for Claude Sonnet 4.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;git clone https://github.com/srikanthethiraj/agentic-ai-system.git
+&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;agentic-ai-system
+python3 &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; venv venv
+&lt;span class=&quot;nb&quot;&gt;source &lt;/span&gt;venv/bin/activate
+pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-r&lt;/span&gt; requirements.txt
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Run the demo:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python demo.py &lt;span class=&quot;nt&quot;&gt;--region&lt;/span&gt; us-east-1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;You’ll see all 6 phases — Bedrock Agent concept, Strands single-agent, multi-agent routing, human-in-the-loop, and AgentCore deployment pattern.&lt;/p&gt;
+
+&lt;p&gt;Run all sample tickets end-to-end:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python run_all_tickets.py
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Results are saved to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;output/full_results.json&lt;/code&gt; with every routing decision, agent response, and tool call.&lt;/p&gt;
+
+&lt;h2 id=&quot;tear-down&quot;&gt;Tear Down&lt;/h2&gt;
+
+&lt;p&gt;No infrastructure to tear down for the local demo. The AgentCore deployment files are in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;agentcore-deploy/&lt;/code&gt; — deploy when ready with:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;pip &lt;span class=&quot;nb&quot;&gt;install &lt;/span&gt;bedrock-agentcore-starter-toolkit
+agentcore deploy &lt;span class=&quot;nt&quot;&gt;--agent-name&lt;/span&gt; ecommerce-support
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;whats-next&quot;&gt;What’s Next&lt;/h2&gt;
+
+&lt;p&gt;This is Part 7 of an ongoing series:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Part 1&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock&quot;&gt;Insurance Claim Processor&lt;/a&gt;: Bedrock basics, prompt templates, simple RAG&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 2&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-financial-services-ai-assistant-with-amazon-bedrock&quot;&gt;Financial Services AI Assistant&lt;/a&gt;: benchmarking, circuit breakers, cross-region resilience&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 3&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-customer-feedback-pipeline-with-amazon-bedrock&quot;&gt;Customer Feedback Pipeline&lt;/a&gt;: multimodal data processing&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 4&lt;/strong&gt; — RAG Knowledge Base: vector stores, embeddings, document chunking&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 5&lt;/strong&gt; — Advanced Search &amp;amp; Retrieval: hybrid search, reranking, query expansion&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 6&lt;/strong&gt; — AI Support Assistant with Governance: guardrails, prompt management, conversation flows&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 7&lt;/strong&gt; — Multi-Agent Support System (this post): Strands Agents, Bedrock AgentCore, multi-agent orchestration&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 8&lt;/strong&gt; — Multi-Tier Model Deployment &amp;amp; Enterprise Integration&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 9&lt;/strong&gt; — AI Safety — Guardrails, PII Protection &amp;amp; Threat Detection&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 10&lt;/strong&gt; — Cost &amp;amp; Latency Optimization for GenAI&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 11&lt;/strong&gt; — AI Governance — Compliance, Fairness &amp;amp; Model Cards&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 12&lt;/strong&gt; — Testing, Evaluation &amp;amp; Troubleshooting GenAI Systems&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In Part 8, we take these agents and deploy them at enterprise scale — multi-tier model deployment, API Gateway integration, EventBridge event-driven processing, and model cascading based on query complexity.&lt;/p&gt;
+
+&lt;p&gt;Repository: &lt;a href=&quot;https://github.com/srikanthethiraj/agentic-ai-system&quot;&gt;github.com/srikanthethiraj/agentic-ai-system&lt;/a&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;em&gt;I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on &lt;a href=&quot;https://www.linkedin.com/in/srikanthethiraj/&quot;&gt;LinkedIn&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+</description>
+        <pubDate>Thu, 30 Apr 2026 00:00:00 -0500</pubDate>
+        <link>http://localhost:4000/build-a-multi-agent-support-system-with-strands-agents-and-bedrock</link>
+        <guid isPermaLink="true">http://localhost:4000/build-a-multi-agent-support-system-with-strands-agents-and-bedrock</guid>
+        
+        <category>AI</category>
+        
+        <category>AWS</category>
+        
+        <category>Python</category>
+        
+        <category>Bedrock</category>
+        
+        <category>Strands</category>
+        
+        <category>Agents</category>
+        
+        <category>AgentCore</category>
+        
+        
+      </item>
     
       <item>
         <title>Build an AI Support Assistant with Bedrock Guardrails and Governance</title>

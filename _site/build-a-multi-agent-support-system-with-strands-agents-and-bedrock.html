@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock | Srikanth Ethiraj</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="In Part 6, we built a support assistant with guardrails, intent detection, and conversation history. It worked — but the routing was Python keyword matching. “Charge” goes to billing. “Password” goes to account. Simple, brittle, and wrong the moment a customer says “I got billed double” instead of “I was charged twice.”" />
+<meta property="og:description" content="In Part 6, we built a support assistant with guardrails, intent detection, and conversation history. It worked — but the routing was Python keyword matching. “Charge” goes to billing. “Password” goes to account. Simple, brittle, and wrong the moment a customer says “I got billed double” instead of “I was charged twice.”" />
+<link rel="canonical" href="http://localhost:4000/build-a-multi-agent-support-system-with-strands-agents-and-bedrock" />
+<meta property="og:url" content="http://localhost:4000/build-a-multi-agent-support-system-with-strands-agents-and-bedrock" />
+<meta property="og:site_name" content="Srikanth Ethiraj" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-30T00:00:00-05:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock" />
+<meta name="twitter:site" content="@" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-04-30T00:00:00-05:00","datePublished":"2026-04-30T00:00:00-05:00","description":"In Part 6, we built a support assistant with guardrails, intent detection, and conversation history. It worked — but the routing was Python keyword matching. “Charge” goes to billing. “Password” goes to account. Simple, brittle, and wrong the moment a customer says “I got billed double” instead of “I was charged twice.”","headline":"Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/build-a-multi-agent-support-system-with-strands-agents-and-bedrock"},"url":"http://localhost:4000/build-a-multi-agent-support-system-with-strands-agents-and-bedrock"}</script>
+<!-- End Jekyll SEO tag -->
+
+    
+
+    <!-- Site Favicon -->
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/initials.png" type="image/png" />
+
+    <!-- Font Embed Code -->
+    <link href="https://fonts.googleapis.com/css?family=Crimson+Text:400,400i,600,600i|Karla:400,400i,700,700i"
+        rel="stylesheet">
+
+    <!-- CSS Styles -->
+    <link href="/assets/css/style.css" rel="stylesheet">
+</head>
+
+
+
+<body class="layout-post">
+    <div id="page" class="site">
+        <header id="masthead" class="site-header">
+    <div class="site-header-wrap">
+        <div class="site-header-inside">
+
+            <div class="site-branding">
+                
+                <p class="profile">
+                    <a href="/">
+                        <img src="/assets/images/authorimage.jpg" alt="'s Picture"
+                            class="avatar" />
+                    </a>
+                </p>
+                <div class="site-identity">
+                    
+                    <h1 class="site-title">
+                        <a href="/">Srikanth Ethiraj</a>
+                    </h1>
+                    
+                    
+                    <p class="site-description">Building AI applications on AWS — one project at a time.</p>
+                    
+                </div><!-- .site-identity -->
+                
+                <button id="menu-toggle" class="menu-toggle"><span class="screen-reader-text">Main Menu</span><span
+                        class="icon-menu" aria-hidden="true"></span></button>
+            </div><!-- .site-branding -->
+
+            <nav id="main-navigation" class="site-navigation" aria-label="Main Navigation">
+                <div class="site-nav-wrap">
+                    <div class="site-nav-inside">
+                    <ul class="menu">
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/">Home</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/about">About</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/contact">Contact Me</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/search">Search</a></li>
+                        
+                    </ul>
+                    <p class="social-links">
+    
+    <a href="https://twitter.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+    <a href="https://github.com/srikantheee84" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+    
+    
+    <a href="https://www.instagram.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    <a href="https://www.pinterest.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M496 256c0 137-111 248-248 248-25.6 0-50.2-3.9-73.4-11.1 10.1-16.5 25.2-43.5 30.8-65 3-11.6 15.4-59 15.4-59 8.1 15.4 31.7 28.5 56.8 28.5 74.8 0 128.7-68.8 128.7-154.3 0-81.9-66.9-143.2-152.9-143.2-107 0-163.9 71.8-163.9 150.1 0 36.4 19.4 81.7 50.3 96.1 4.7 2.2 7.2 1.2 8.3-3.3.8-3.4 5-20.3 6.9-28.1.6-2.5.3-4.7-1.7-7.1-10.1-12.5-18.3-35.3-18.3-56.6 0-54.7 41.4-107.6 112-107.6 60.9 0 103.6 41.5 103.6 100.9 0 67.1-33.9 113.6-78 113.6-24.3 0-42.6-20.1-36.7-44.8 7-29.5 20.5-61.3 20.5-82.6 0-19-10.2-34.9-31.4-34.9-24.9 0-44.9 25.7-44.9 60.2 0 22 7.4 36.8 7.4 36.8s-24.5 103.8-29 123.2c-5 21.4-3 51.6-.9 71.2C65.4 450.9 0 361.1 0 256 0 119 111 8 248 8s248 111 248 248z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    <a href="https://www.linkedin.com/in/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+</p>
+                    </div><!-- .site-nav-inside -->
+                </div><!-- .site-nav-wrap -->
+            </nav><!-- .site-navigation -->
+
+        </div><!-- .site-header-inside -->
+    </div><!-- .site-header-wrap -->
+</header><!-- .site-header -->
+        <div id="content" class="site-content fadeInDown delay_075s">
+            <div class="inner-wide">
+                <main id="main" class="site-main">
+    <article class="post-full inner">
+        <header class="post-header">
+            <div class="post-meta">
+                <time class="post-date" datetime=" 2026-04-30">
+                    April 30, 2026
+                </time>
+            </div><!-- .post-meta -->
+            <h1 class="post-title">Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock</h1>
+            
+            <p class="post-tags">
+                <a href="/tags/index.html#AI"
+                    rel="tag">AI</a>
+                <a href="/tags/index.html#AWS"
+                    rel="tag">AWS</a>
+                <a href="/tags/index.html#Python"
+                    rel="tag">Python</a>
+                <a href="/tags/index.html#Bedrock"
+                    rel="tag">Bedrock</a>
+                <a href="/tags/index.html#Strands"
+                    rel="tag">Strands</a>
+                <a href="/tags/index.html#Agents"
+                    rel="tag">Agents</a>
+                <a href="/tags/index.html#AgentCore"
+                    rel="tag">AgentCore</a>
+                
+            </p>
+            
+        </header><!-- .post-header -->
+        
+        <div class="post-thumbnail">
+            <img src="assets/images/posts/2026/article-7-hero.jpeg" alt="Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock">
+        </div>
+        
+        <div class="post-content">
+            <p>In Part 6, we built a support assistant with guardrails, intent detection, and conversation history. It worked — but the routing was Python keyword matching. “Charge” goes to billing. “Password” goes to account. Simple, brittle, and wrong the moment a customer says “I got billed double” instead of “I was charged twice.”</p>
+
+<p>Your e-commerce company gets 200+ support tickets a day. Billing disputes, shipping problems, account issues — often multiple problems in the same message. “I was charged twice for my yoga mat AND I received the wrong color.” That’s two agents, not one. Keyword matching can’t handle it.</p>
+
+<p>This project replaces manual routing with agents that reason. A supervisor agent reads the customer’s message, understands the intent, and delegates to specialized agents — each with their own tools and expertise. And it shows you three ways to build it: Bedrock Agents for prototyping, Strands for production code, and AgentCore for deployment at scale.</p>
+
+<!--more-->
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>A real support team doesn’t have one person who handles everything. It has specialists — someone for billing, someone for shipping, someone for accounts. When a customer calls with multiple issues, the receptionist figures out who to involve and routes accordingly.</p>
+
+<p>Part 6’s assistant tried to be all three specialists at once. One system prompt, one set of tools, keyword-based routing. It couldn’t handle “I was charged twice AND my package is late” because that’s two specialists, not one.</p>
+
+<p>You need a system where each specialist is an independent agent with its own tools, and a supervisor that understands natural language well enough to route correctly — even when the customer’s message spans multiple domains.</p>
+
+<h2 id="the-pattern">The Pattern</h2>
+
+<p><strong>Customer → Supervisor (reasons about routing) → Specialist Agent(s) → Tools → Response</strong></p>
+
+<p>The supervisor doesn’t use rules. It uses an LLM to read the message, understand the intent, and decide which agents to involve. The specialist agents don’t share tools — each one has exactly the tools it needs for its domain.</p>
+
+<h2 id="three-ways-to-build-agents-on-aws">Three Ways to Build Agents on AWS</h2>
+
+<p>Before diving into the code, here’s the landscape. AWS offers three approaches to building agents, and they’re not alternatives — they’re layers:</p>
+
+<p><strong>Bedrock Agents (Managed Prototype)</strong>
+Configure an agent in the console or via API. AWS handles the orchestration loop, session memory, and scaling. Fast to set up, but you can’t customize the reasoning, and each action group requires a Lambda function. Best for: quick prototypes and simple single-purpose agents.</p>
+
+<p><strong>Strands Agents SDK (Code-First Build)</strong>
+Open-source Python SDK. You write the agent logic — tools as Python functions, system prompts, reasoning patterns. The agent decides which tools to use based on the prompt. Full control, local testing, fast iteration. Best for: custom agents, multi-agent systems, production code.</p>
+
+<p><strong>Amazon Bedrock AgentCore (Production Deployment)</strong>
+Managed infrastructure for running agents at scale. Takes your Strands agent (or any framework), wraps it as an HTTP service, and handles compute, scaling, identity, memory, and observability. Best for: deploying agents to production without managing servers.</p>
+
+<p>The progression: Prototype (Bedrock Agents) → Build (Strands) → Deploy (AgentCore).</p>
+
+<h2 id="architecture">Architecture</h2>
+
+<p>The complete flow: customer message enters the supervisor, which routes to the right specialist agent(s). Each agent has its own tools. Responses go back to the customer. Sensitive actions (refunds over $50, angry customers) escalate to human review.</p>
+
+<p><img src="/assets/images/posts/2026/article-7-architecture.png" alt="Multi-Agent Support System" /></p>
+
+<h2 id="how-the-supervisor-knows-what-to-do">How the Supervisor Knows What to Do</h2>
+
+<p>This is the key question. The supervisor agent doesn’t have routing rules or keyword matching. It has a system prompt that defines the available agents and their responsibilities:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ORDER AGENT — for: package tracking, shipping status, order cancellation, returns, wrong items
+BILLING AGENT — for: payment questions, charges, refunds, duplicate charges, pricing
+ACCOUNT AGENT — for: login issues, password resets, email/phone/address changes, app problems
+</code></pre></div></div>
+
+<p>Claude reads the customer’s message, reasons about which categories the issue falls into, and returns a JSON routing decision:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"agents"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"billing"</span><span class="p">,</span><span class="w"> </span><span class="s2">"order"</span><span class="p">],</span><span class="w">
+    </span><span class="nl">"reasoning"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Customer was charged twice (billing) AND received wrong item (order)"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"priority"</span><span class="p">:</span><span class="w"> </span><span class="s2">"high"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"needs_human_review"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>The intelligence is in the reasoning. “I got billed double” routes to billing even though the word “charge” never appears. “My package vanished” routes to order even though “shipping” isn’t mentioned. The LLM understands meaning, not keywords.</p>
+
+<p>This is the fundamental difference from Article 6. Article 6: you write the routing rules. Article 7: the agent writes its own routing decisions.</p>
+
+<h2 id="how-it-works--the-agent-evolution">How It Works — The Agent Evolution</h2>
+
+<p>Each phase builds on the previous one’s limitation.</p>
+
+<h3 id="phase-1-bedrock-agents--the-quick-prototype">Phase 1: Bedrock Agents — The Quick Prototype</h3>
+
+<p>You can configure an order tracking agent in minutes using the Bedrock Agents API. Define the agent, add an action group with three actions (TrackOrder, LookupHistory, CancelOrder), and AWS handles the orchestration.</p>
+
+<p>It works for simple, single-purpose agents. But you can’t customize the reasoning loop, you can’t test locally without deploying infrastructure, and adding a second agent type means creating a whole new managed agent.</p>
+
+<p>When you need more control, that’s where Strands comes in.</p>
+
+<h3 id="phase-2-strands-agents--full-code-control">Phase 2: Strands Agents — Full Code Control</h3>
+
+<p>Same order tracking agent, rebuilt with Strands. Tools are Python functions decorated with <code class="language-plaintext highlighter-rouge">@tool</code>. The agent decides which tools to call based on the customer’s message.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Customer: Where is my order ORD-50435?
+Agent: [calls track_order] → Your order is in transit with FedEx.
+       Tracking: 794644790132. Estimated delivery: April 23rd.
+</code></pre></div></div>
+
+<p>The agent looked up the order, found the FedEx tracking number, and gave a specific answer with dates. No hardcoded responses — the tool returned real data and the agent formatted it naturally.</p>
+
+<p>Single agents work great for focused tasks. But real customers have multi-part problems.</p>
+
+<h3 id="phase-3-multi-agent-orchestration">Phase 3: Multi-Agent Orchestration</h3>
+
+<p>Three specialist agents, each with their own tools:</p>
+
+<p>Order Agent — <code class="language-plaintext highlighter-rouge">track_order</code>, <code class="language-plaintext highlighter-rouge">lookup_order_history</code>, <code class="language-plaintext highlighter-rouge">cancel_order</code>
+Billing Agent — <code class="language-plaintext highlighter-rouge">check_payment_status</code>, <code class="language-plaintext highlighter-rouge">process_refund</code>
+Account Agent — <code class="language-plaintext highlighter-rouge">lookup_customer</code>, <code class="language-plaintext highlighter-rouge">reset_password</code>, <code class="language-plaintext highlighter-rouge">update_account_info</code></p>
+
+<p>A supervisor agent routes incoming requests. When a customer says “I was charged twice AND I received the wrong color,” the supervisor delegates to both billing and order agents:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Supervisor: Routes to [billing, order] — "Two issues: duplicate charge + wrong item"
+
+Billing Agent: Found duplicate charge of $167.76. Refund submitted
+               for manager approval (over $50 threshold).
+
+Order Agent: Confirmed wrong item flag on ORD-50398. Escalated to
+             fulfillment team for correct color shipment.
+</code></pre></div></div>
+
+<p>Both agents worked independently on their part of the problem, using their own tools and domain knowledge.</p>
+
+<h3 id="phase-4-human-in-the-loop">Phase 4: Human-in-the-Loop</h3>
+
+<p>Some actions are too risky for full automation. Refunds over $50 require manager approval. Angry customers get escalated to humans.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Customer: I need a full refund of $167.76.
+
+Billing Agent: Refund submitted → PENDING APPROVAL (exceeds $50 threshold)
+Supervisor: ⚠️ FLAGGED FOR HUMAN REVIEW
+</code></pre></div></div>
+
+<p>The agent doesn’t just process the refund blindly. The <code class="language-plaintext highlighter-rouge">process_refund</code> tool has a built-in threshold — amounts over $50 return a “pending_approval” status. The supervisor also flags the ticket independently based on the refund amount and customer sentiment.</p>
+
+<h3 id="phase-5-agentcore--production-deployment">Phase 5: AgentCore — Production Deployment</h3>
+
+<p>Everything works locally. But how do you run it in production with auto-scaling, identity, and observability?</p>
+
+<p>AgentCore takes your Strands agent and deploys it as a managed service. The code change is minimal — wrap your agent function with <code class="language-plaintext highlighter-rouge">@app.entrypoint</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">bedrock_agentcore.runtime</span> <span class="kn">import</span> <span class="n">BedrockAgentCoreApp</span>
+<span class="kn">from</span> <span class="n">strands</span> <span class="kn">import</span> <span class="n">Agent</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="nc">BedrockAgentCoreApp</span><span class="p">()</span>
+<span class="n">agent</span> <span class="o">=</span> <span class="nc">Agent</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="p">[...],</span> <span class="n">system_prompt</span><span class="o">=</span><span class="sh">"</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nd">@app.entrypoint</span>
+<span class="k">def</span> <span class="nf">invoke</span><span class="p">(</span><span class="n">payload</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="nf">agent</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="sh">"</span><span class="s">prompt</span><span class="sh">"</span><span class="p">])</span>
+    <span class="k">return</span> <span class="p">{</span><span class="sh">"</span><span class="s">response</span><span class="sh">"</span><span class="p">:</span> <span class="nf">str</span><span class="p">(</span><span class="n">result</span><span class="p">)}</span>
+</code></pre></div></div>
+
+<p>Test locally with <code class="language-plaintext highlighter-rouge">python agent_app.py</code> and <code class="language-plaintext highlighter-rouge">curl</code>. Deploy with <code class="language-plaintext highlighter-rouge">agentcore deploy --agent-name ecommerce-support</code>. AgentCore handles compute, scaling, IAM roles, session memory, and CloudWatch observability.</p>
+
+<h2 id="real-results--8-tickets-end-to-end">Real Results — 8 Tickets End-to-End</h2>
+
+<p>We ran all 8 sample tickets through the full system — supervisor routing, sub-agent execution, tool calls, and response generation:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Ticket     Agents              Review    Latency
+TKT-001    order                   No    10601ms
+TKT-002    billing            ⚠️ YES    10902ms
+TKT-003    account                 No    12471ms
+TKT-004    billing,order      ⚠️ YES    22593ms
+TKT-005    billing,order      ⚠️ YES    23603ms
+TKT-006    order                   No    10633ms
+TKT-007    account                 No    12405ms
+TKT-008    account                 No    14047ms
+</code></pre></div></div>
+
+<p>Every ticket routed correctly. Multi-issue tickets (TKT-004, TKT-005) went to multiple agents. Money-related issues got flagged for human review. The supervisor considered customer loyalty tier — Platinum customers with billing issues got higher priority.</p>
+
+<h2 id="when-to-use-what">When to Use What</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Bedrock Agents</th>
+      <th>Strands Agents</th>
+      <th>AgentCore</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Best for</strong></td>
+      <td>Quick prototype</td>
+      <td>Custom build</td>
+      <td>Production deployment</td>
+    </tr>
+    <tr>
+      <td><strong>Control</strong></td>
+      <td>Low — AWS manages</td>
+      <td>Full — you own the code</td>
+      <td>Full — any framework</td>
+    </tr>
+    <tr>
+      <td><strong>Local testing</strong></td>
+      <td>Hard — needs infrastructure</td>
+      <td>Easy — runs locally</td>
+      <td>Easy — runs on port 8080</td>
+    </tr>
+    <tr>
+      <td><strong>Multi-agent</strong></td>
+      <td>Separate managed agents</td>
+      <td>Native orchestration</td>
+      <td>Deploy any agent</td>
+    </tr>
+    <tr>
+      <td><strong>Cost</strong></td>
+      <td>Pay per invocation</td>
+      <td>Model costs only</td>
+      <td>Runtime + model costs</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The progression: Prototype with Bedrock Agents to validate the idea. Build with Strands when you need custom tools and multi-agent orchestration. Deploy with AgentCore when you’re ready for production.</p>
+
+<h2 id="what-changed-from-part-6">What Changed from Part 6</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Concept</th>
+      <th>Part 6 (AI Support Assistant)</th>
+      <th>Part 7 (This Project)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Routing</strong></td>
+      <td>Python keyword matching</td>
+      <td>LLM-based supervisor reasoning</td>
+    </tr>
+    <tr>
+      <td><strong>Agents</strong></td>
+      <td>One agent does everything</td>
+      <td>Three specialists + supervisor</td>
+    </tr>
+    <tr>
+      <td><strong>Tools</strong></td>
+      <td>Shared across all intents</td>
+      <td>Domain-specific per agent</td>
+    </tr>
+    <tr>
+      <td><strong>Multi-issue</strong></td>
+      <td>Can’t handle</td>
+      <td>Supervisor delegates to multiple agents</td>
+    </tr>
+    <tr>
+      <td><strong>Framework</strong></td>
+      <td>Raw Bedrock Converse API</td>
+      <td>Strands Agents SDK</td>
+    </tr>
+    <tr>
+      <td><strong>Deployment</strong></td>
+      <td>Local only</td>
+      <td>AgentCore production-ready</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="getting-started">Getting Started</h2>
+
+<p>Prerequisites: Python 3.10+, AWS CLI configured, Bedrock model access for Claude Sonnet 4.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/srikanthethiraj/agentic-ai-system.git
+<span class="nb">cd </span>agentic-ai-system
+python3 <span class="nt">-m</span> venv venv
+<span class="nb">source </span>venv/bin/activate
+pip <span class="nb">install</span> <span class="nt">-r</span> requirements.txt
+</code></pre></div></div>
+
+<p>Run the demo:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python demo.py <span class="nt">--region</span> us-east-1
+</code></pre></div></div>
+
+<p>You’ll see all 6 phases — Bedrock Agent concept, Strands single-agent, multi-agent routing, human-in-the-loop, and AgentCore deployment pattern.</p>
+
+<p>Run all sample tickets end-to-end:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python run_all_tickets.py
+</code></pre></div></div>
+
+<p>Results are saved to <code class="language-plaintext highlighter-rouge">output/full_results.json</code> with every routing decision, agent response, and tool call.</p>
+
+<h2 id="tear-down">Tear Down</h2>
+
+<p>No infrastructure to tear down for the local demo. The AgentCore deployment files are in <code class="language-plaintext highlighter-rouge">agentcore-deploy/</code> — deploy when ready with:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>bedrock-agentcore-starter-toolkit
+agentcore deploy <span class="nt">--agent-name</span> ecommerce-support
+</code></pre></div></div>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>This is Part 7 of an ongoing series:</p>
+
+<ul>
+  <li><strong>Part 1</strong> — <a href="https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock">Insurance Claim Processor</a>: Bedrock basics, prompt templates, simple RAG</li>
+  <li><strong>Part 2</strong> — <a href="https://blog.srikanthethiraj.com/build-a-financial-services-ai-assistant-with-amazon-bedrock">Financial Services AI Assistant</a>: benchmarking, circuit breakers, cross-region resilience</li>
+  <li><strong>Part 3</strong> — <a href="https://blog.srikanthethiraj.com/build-a-customer-feedback-pipeline-with-amazon-bedrock">Customer Feedback Pipeline</a>: multimodal data processing</li>
+  <li><strong>Part 4</strong> — RAG Knowledge Base: vector stores, embeddings, document chunking</li>
+  <li><strong>Part 5</strong> — Advanced Search &amp; Retrieval: hybrid search, reranking, query expansion</li>
+  <li><strong>Part 6</strong> — AI Support Assistant with Governance: guardrails, prompt management, conversation flows</li>
+  <li><strong>Part 7</strong> — Multi-Agent Support System (this post): Strands Agents, Bedrock AgentCore, multi-agent orchestration</li>
+  <li><strong>Part 8</strong> — Multi-Tier Model Deployment &amp; Enterprise Integration</li>
+  <li><strong>Part 9</strong> — AI Safety — Guardrails, PII Protection &amp; Threat Detection</li>
+  <li><strong>Part 10</strong> — Cost &amp; Latency Optimization for GenAI</li>
+  <li><strong>Part 11</strong> — AI Governance — Compliance, Fairness &amp; Model Cards</li>
+  <li><strong>Part 12</strong> — Testing, Evaluation &amp; Troubleshooting GenAI Systems</li>
+</ul>
+
+<p>In Part 8, we take these agents and deploy them at enterprise scale — multi-tier model deployment, API Gateway integration, EventBridge event-driven processing, and model cascading based on query complexity.</p>
+
+<p>Repository: <a href="https://github.com/srikanthethiraj/agentic-ai-system">github.com/srikanthethiraj/agentic-ai-system</a></p>
+
+<hr />
+
+<p><em>I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on <a href="https://www.linkedin.com/in/srikanthethiraj/">LinkedIn</a>.</em></p>
+
+        </div>
+        <footer class="post-footer">
+            <div class="post-share">
+                <span class="post-share-title">Share:</span>
+                <a target="_blank"
+                    href="https://twitter.com/share?text=Build+a+Multi-Agent+Support+System+with+Strands+Agents+and+Amazon+Bedrock&amp;url=https://blog.srikanthethiraj.com/build-a-multi-agent-support-system-with-strands-agents-and-bedrock">Twitter</a>
+                <a target="_blank"
+                    href="https://www.facebook.com/sharer/sharer.php?u=https://blog.srikanthethiraj.com/build-a-multi-agent-support-system-with-strands-agents-and-bedrock">Facebook</a>
+            </div><!-- .share-post -->
+        </footer>
+        
+<section id="comments-area" class="comments-area">
+    <h2 class="comments-title">Comments</h2>
+    <div class="comments-inside">
+        <div id="disqus_thread"></div>
+    </div><!-- .comments-inside -->
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by
+            Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</section><!-- .comments-area -->
+<script type="text/javascript">
+    var disqus_shortname = 'justgoodthemes';
+    var disqus_developer = 0;
+    (function () {
+        var dsq = document.createElement('script');
+        dsq.type = 'text/javascript';
+        dsq.async = true;
+        dsq.src = window.location.protocol + '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+
+    </article>
+    
+    <section class="newsletter-box inner">
+    <h2 class="newsletter-box-title">Subscribe to Srikanth Ethiraj newsletter</h2>
+    <p>Get the latest and greatest from Srikanth Ethiraj delivered straight to your inbox every week.</p>
+    <!-- Begin MailChimp Signup Form -->
+    <div id="mc_embed_signup">
+        <form action="https://srikanthethiraj.us19.list-manage.com/subscribe/post?u=42acdd8bd6be3355d0c6df855&amp;id=72ab533508&amp;f_id=00c336e3f0" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form"
+            class="validate gh-subscribe-form" target="_blank" novalidate>
+            <label for="mce-EMAIL" class="screen-reader-text">Email Address</label>
+            <input type="email" value="" name="EMAIL" class="required email subscribe-email" id="mce-EMAIL" placeholder="Your email address">
+            <input type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe" class="button">
+        </form>
+    </div>
+    <!--End mc_embed_signup-->
+</section><!-- .widget -->
+    
+    <section class="read-next inner">
+        <h2 class="read-next-title">Read Next</h2>
+        
+        <article class="post">
+            <header class="post-header">
+                <div class="post-meta">
+                    <time class="published" datetime="April 28, 2026">April 28, 2026</time>
+                </div>
+                <h3 class="post-title"><a href="/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance">Build an AI Support Assistant with Bedrock Guardrails and Governance</a>
+                </h3>
+                <p class="post-tags">
+
+                    
+                    <a
+                        href="/tags/index.html#AI" rel="tag">AI</a><a
+                        href="/tags/index.html#AWS" rel="tag">AWS</a><a
+                        href="/tags/index.html#Python" rel="tag">Python</a><a
+                        href="/tags/index.html#Bedrock" rel="tag">Bedrock</a><a
+                        href="/tags/index.html#Guardrails" rel="tag">Guardrails</a><a
+                        href="/tags/index.html#Comprehend" rel="tag">Comprehend</a><a
+                        href="/tags/index.html#DynamoDB" rel="tag">DynamoDB</a>
+                    
+
+                </p>
+            </header>
+        </article>
+        
+        
+    </section><!-- .read-next -->
+    <!-- Create a sorted array of tags -->
+     
+    <section class="tagcloud inner">
+        <h2 class="tagcloud-title">Tags</h2>
+        <div class="tag-links">
+            
+            <a href='/tags/#AI'>AI</a>
+            
+            <a href='/tags/#AWS'>AWS</a>
+            
+            <a href='/tags/#AgentCore'>AgentCore</a>
+            
+            <a href='/tags/#Agents'>Agents</a>
+            
+            <a href='/tags/#Bedrock'>Bedrock</a>
+            
+            <a href='/tags/#Comprehend'>Comprehend</a>
+            
+            <a href='/tags/#DynamoDB'>DynamoDB</a>
+            
+            <a href='/tags/#Embeddings'>Embeddings</a>
+            
+            <a href='/tags/#Guardrails'>Guardrails</a>
+            
+            <a href='/tags/#Lambda'>Lambda</a>
+            
+            <a href='/tags/#OpenSearch'>OpenSearch</a>
+            
+            <a href='/tags/#Python'>Python</a>
+            
+            <a href='/tags/#RAG'>RAG</a>
+            
+            <a href='/tags/#Search'>Search</a>
+            
+            <a href='/tags/#StepFunctions'>StepFunctions</a>
+            
+            <a href='/tags/#Strands'>Strands</a>
+            
+            <a href='/tags/#Textract'>Textract</a>
+            
+            <a href='/tags/#Transcribe'>Transcribe</a>
+            
+        </div><!-- .tag-links -->
+    </section><!-- .tagcloud -->
+</main><!-- .site-main -->
+
+                
+
+                <footer id="colophon" class="site-footer">
+    <p class="site-info inner">
+        <a href="#">Srikanth Ethiraj</a> &copy; 2026. Royce theme by
+        <a target="_blank" href="https://justgoodthemes.com/">JustGoodThemes</a>.
+        <br />
+        Powered by <a target="_blank" href="https://jekyllrb.com/">Jekyll</a>.
+    </p>
+    <a id="back-to-top" class="back-to-top" href="#page">
+        <span class="icon-arrow-up" aria-hidden="true"></span>
+        <span class="screen-reader-text">Back to top</span>
+    </a>
+</footer><!-- .site-footer -->
+            </div><!-- .inner-wide -->
+        </div><!-- .site-content -->
+    </div><!-- .site -->
+
+    
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX', { 'anonymize_ip': true });
+  </script>
+
+    <!-- Javascript Assets -->
+    <script src="/assets/js/jquery-3.3.1.min.js"></script>
+    <script src="/assets/js/plugins.js"></script>
+    <script src="/assets/js/custom.js"></script>
+
+</body>
+
+</html>
