@@ -9,6 +9,7 @@ author:
   greetings: "Building AI applications on AWS — one project at a time."
 favicon: 'assets/images/initials.png'
 baseurl: 
+url: https://blog.srikanthethiraj.com
 production_url: https://blog.srikanthethiraj.com/
 disqus: 'justgoodthemes'
 mailchimp_url: 'https://srikanthethiraj.us19.list-manage.com/subscribe/post?u=42acdd8bd6be3355d0c6df855&amp;id=72ab533508&amp;f_id=00c336e3f0'
