@@ -12,7 +12,7 @@ In Part 3, we built a pipeline that processes text, images, audio, and surveys. 
 
 Your engineering team has hundreds of internal docs — runbooks, architecture decisions, onboarding guides, API references. They're scattered across Confluence, GitHub wikis, and shared drives. New hires spend weeks finding answers that already exist. Senior engineers answer the same questions over and over.
 
-This project builds an internal knowledge base that actually understands what you're asking. Not keyword search. Semantic search — where "how do I reduce startup latency?" finds the doc about cold starts, even though it never uses the word "latency."
+This project builds an internal knowledge base that actually understands what you're asking. Not keyword search. Semantic search — where "how do I ship code to production?" finds the deployment runbook, even though it says "deploy" instead of "ship."
 
 <!--more-->
 
@@ -29,7 +29,7 @@ kb.add_policy("POL-2024-78432", "Coverage: $500,000. Deductible: $1,000.")
 
 Three policies. Exact key match. No semantic understanding. Ask "what's my deductible?" and it has no idea — because it only matches on policy number, not meaning.
 
-That's how most internal search works today. Exact keyword matching. If the doc says "cold start" and you search "startup latency," you get nothing.
+That's how most internal search works today. Exact keyword matching. If the runbook says "deployment process" and you search "how do I ship code," you get nothing.
 
 Real knowledge bases need to understand what you're asking, search across thousands of documents, and find the relevant passages — even when the wording doesn't match exactly. That's what vector search and embeddings solve.
 
@@ -59,7 +59,7 @@ Seven steps. Documents flow through extraction, chunking, and embedding into a v
 
 **Chunk.** Raw text is split into meaningful segments. Not arbitrary 512-character blocks — semantic chunking that respects paragraph boundaries, section headings, and sentence structure. Each chunk is 100-1000 characters, sized for embedding quality without losing context.
 
-**Embed.** Amazon Titan Embed V2 converts each chunk into a 1024-dimensional vector. These vectors capture semantic meaning — "Lambda cold starts" and "execution environment initialization latency" end up close together in vector space, even though they share no words.
+**Embed.** Amazon Titan Embed V2 converts each chunk into a 1024-dimensional vector. These vectors capture semantic meaning — "deployment process" and "how to ship code to production" end up close together in vector space, even though they share no words.
 
 **Index.** Vectors are bulk-indexed into OpenSearch using the HNSW algorithm for approximate nearest-neighbor search. Each document in the index carries the original text, document ID, chunk position, and metadata. This is the searchable knowledge base.
 

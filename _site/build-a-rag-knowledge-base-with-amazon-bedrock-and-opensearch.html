@@ -195,7 +195,7 @@ License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL
 
 <p>Your engineering team has hundreds of internal docs — runbooks, architecture decisions, onboarding guides, API references. They’re scattered across Confluence, GitHub wikis, and shared drives. New hires spend weeks finding answers that already exist. Senior engineers answer the same questions over and over.</p>
 
-<p>This project builds an internal knowledge base that actually understands what you’re asking. Not keyword search. Semantic search — where “how do I reduce startup latency?” finds the doc about cold starts, even though it never uses the word “latency.”</p>
+<p>This project builds an internal knowledge base that actually understands what you’re asking. Not keyword search. Semantic search — where “how do I ship code to production?” finds the deployment runbook, even though it says “deploy” instead of “ship.”</p>
 
 <!--more-->
 
@@ -211,7 +211,7 @@ License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL
 
 <p>Three policies. Exact key match. No semantic understanding. Ask “what’s my deductible?” and it has no idea — because it only matches on policy number, not meaning.</p>
 
-<p>That’s how most internal search works today. Exact keyword matching. If the doc says “cold start” and you search “startup latency,” you get nothing.</p>
+<p>That’s how most internal search works today. Exact keyword matching. If the runbook says “deployment process” and you search “how do I ship code,” you get nothing.</p>
 
 <p>Real knowledge bases need to understand what you’re asking, search across thousands of documents, and find the relevant passages — even when the wording doesn’t match exactly. That’s what vector search and embeddings solve.</p>
 
@@ -241,7 +241,7 @@ License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL
 
 <p><strong>Chunk.</strong> Raw text is split into meaningful segments. Not arbitrary 512-character blocks — semantic chunking that respects paragraph boundaries, section headings, and sentence structure. Each chunk is 100-1000 characters, sized for embedding quality without losing context.</p>
 
-<p><strong>Embed.</strong> Amazon Titan Embed V2 converts each chunk into a 1024-dimensional vector. These vectors capture semantic meaning — “Lambda cold starts” and “execution environment initialization latency” end up close together in vector space, even though they share no words.</p>
+<p><strong>Embed.</strong> Amazon Titan Embed V2 converts each chunk into a 1024-dimensional vector. These vectors capture semantic meaning — “deployment process” and “how to ship code to production” end up close together in vector space, even though they share no words.</p>
 
 <p><strong>Index.</strong> Vectors are bulk-indexed into OpenSearch using the HNSW algorithm for approximate nearest-neighbor search. Each document in the index carries the original text, document ID, chunk position, and metadata. This is the searchable knowledge base.</p>
 
