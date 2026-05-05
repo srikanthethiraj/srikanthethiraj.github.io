@@ -1,0 +1,42 @@
+[
+  {
+    "ticket_id": "TKT-001",
+    "customer_id": "CUST-1001",
+    "message": "Where is my order ORD-50435? It was supposed to arrive yesterday."
+  },
+  {
+    "ticket_id": "TKT-002",
+    "customer_id": "CUST-1003",
+    "message": "I think I was charged twice for order ORD-50398. Can you check my payment history?"
+  },
+  {
+    "ticket_id": "TKT-003",
+    "customer_id": "CUST-1002",
+    "message": "I can't log into my account. Can you reset my password?"
+  },
+  {
+    "ticket_id": "TKT-004",
+    "customer_id": "CUST-1003",
+    "message": "I was charged twice for my yoga mat order AND I received the wrong color. I want a refund and the correct item shipped."
+  },
+  {
+    "ticket_id": "TKT-005",
+    "customer_id": "CUST-1003",
+    "message": "I need a full refund of $167.76 for order ORD-50398. The yoga mat was the wrong color and I've been charged twice."
+  },
+  {
+    "ticket_id": "TKT-006",
+    "customer_id": "CUST-1001",
+    "message": "I want to cancel order ORD-50440. I changed my mind."
+  },
+  {
+    "ticket_id": "TKT-007",
+    "customer_id": "CUST-1002",
+    "message": "I need to update my email address to james.new@email.com"
+  },
+  {
+    "ticket_id": "TKT-008",
+    "customer_id": "CUST-1001",
+    "message": "The mobile app keeps crashing when I try to check my orders. Is there an outage?"
+  }
+]

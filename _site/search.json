@@ -1,6 +1,14 @@
 [
   
     {
+      "title"    : "Deploy AI Agents on AWS — Bedrock Agents vs AgentCore",
+      "category" : "",
+      "tags"     : "AI, AWS, Python, Bedrock, Agents, AgentCore, Strands",
+      "url"      : "/deploy-ai-agents-on-aws-bedrock-agents-vs-agentcore",
+      "date"     : "May 2, 2026"
+    } ,
+  
+    {
       "title"    : "Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock",
       "category" : "",
       "tags"     : "AI, AWS, Python, Bedrock, Strands, Agents, AgentCore",
@@ -9,11 +17,19 @@
     } ,
   
     {
+      "title"    : "Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock",
+      "category" : "",
+      "tags"     : "AI, AWS, Python, Bedrock, Strands, Agents",
+      "url"      : "/build-a-multi-agent-support-system-with-strands-agents-and-bedrock",
+      "date"     : "April 29, 2026"
+    } ,
+  
+    {
       "title"    : "Build an AI Support Assistant with Bedrock Guardrails and Governance",
       "category" : "",
       "tags"     : "AI, AWS, Python, Bedrock, Guardrails, Comprehend, DynamoDB",
       "url"      : "/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance",
-      "date"     : "April 28, 2026"
+      "date"     : "April 26, 2026"
     } ,
   
     {

@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Deploy AI Agents on AWS — Bedrock Agents vs AgentCore | Srikanth Ethiraj</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Deploy AI Agents on AWS — Bedrock Agents vs AgentCore" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="In Part 7, we built a multi-agent support system with Strands Agents — a supervisor that routes customer requests to three specialist agents, with human-in-the-loop safety for sensitive actions. It works on your machine. Now how do you run it in production?" />
+<meta property="og:description" content="In Part 7, we built a multi-agent support system with Strands Agents — a supervisor that routes customer requests to three specialist agents, with human-in-the-loop safety for sensitive actions. It works on your machine. Now how do you run it in production?" />
+<link rel="canonical" href="http://localhost:4000/deploy-ai-agents-on-aws-bedrock-agents-vs-agentcore" />
+<meta property="og:url" content="http://localhost:4000/deploy-ai-agents-on-aws-bedrock-agents-vs-agentcore" />
+<meta property="og:site_name" content="Srikanth Ethiraj" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-02T00:00:00-05:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Deploy AI Agents on AWS — Bedrock Agents vs AgentCore" />
+<meta name="twitter:site" content="@" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-05-02T00:00:00-05:00","datePublished":"2026-05-02T00:00:00-05:00","description":"In Part 7, we built a multi-agent support system with Strands Agents — a supervisor that routes customer requests to three specialist agents, with human-in-the-loop safety for sensitive actions. It works on your machine. Now how do you run it in production?","headline":"Deploy AI Agents on AWS — Bedrock Agents vs AgentCore","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/deploy-ai-agents-on-aws-bedrock-agents-vs-agentcore"},"url":"http://localhost:4000/deploy-ai-agents-on-aws-bedrock-agents-vs-agentcore"}</script>
+<!-- End Jekyll SEO tag -->
+
+    
+
+    <!-- Site Favicon -->
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/initials.png" type="image/png" />
+
+    <!-- Font Embed Code -->
+    <link href="https://fonts.googleapis.com/css?family=Crimson+Text:400,400i,600,600i|Karla:400,400i,700,700i"
+        rel="stylesheet">
+
+    <!-- CSS Styles -->
+    <link href="/assets/css/style.css" rel="stylesheet">
+</head>
+
+
+
+<body class="layout-post">
+    <div id="page" class="site">
+        <header id="masthead" class="site-header">
+    <div class="site-header-wrap">
+        <div class="site-header-inside">
+
+            <div class="site-branding">
+                
+                <p class="profile">
+                    <a href="/">
+                        <img src="/assets/images/authorimage.jpg" alt="'s Picture"
+                            class="avatar" />
+                    </a>
+                </p>
+                <div class="site-identity">
+                    
+                    <h1 class="site-title">
+                        <a href="/">Srikanth Ethiraj</a>
+                    </h1>
+                    
+                    
+                    <p class="site-description">Building AI applications on AWS — one project at a time.</p>
+                    
+                </div><!-- .site-identity -->
+                
+                <button id="menu-toggle" class="menu-toggle"><span class="screen-reader-text">Main Menu</span><span
+                        class="icon-menu" aria-hidden="true"></span></button>
+            </div><!-- .site-branding -->
+
+            <nav id="main-navigation" class="site-navigation" aria-label="Main Navigation">
+                <div class="site-nav-wrap">
+                    <div class="site-nav-inside">
+                    <ul class="menu">
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/">Home</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/about">About</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/contact">Contact Me</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/search">Search</a></li>
+                        
+                    </ul>
+                    <p class="social-links">
+    
+    <a href="https://twitter.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+    <a href="https://github.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+    
+    
+    <a href="https://www.instagram.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    <a href="https://www.pinterest.com/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M496 256c0 137-111 248-248 248-25.6 0-50.2-3.9-73.4-11.1 10.1-16.5 25.2-43.5 30.8-65 3-11.6 15.4-59 15.4-59 8.1 15.4 31.7 28.5 56.8 28.5 74.8 0 128.7-68.8 128.7-154.3 0-81.9-66.9-143.2-152.9-143.2-107 0-163.9 71.8-163.9 150.1 0 36.4 19.4 81.7 50.3 96.1 4.7 2.2 7.2 1.2 8.3-3.3.8-3.4 5-20.3 6.9-28.1.6-2.5.3-4.7-1.7-7.1-10.1-12.5-18.3-35.3-18.3-56.6 0-54.7 41.4-107.6 112-107.6 60.9 0 103.6 41.5 103.6 100.9 0 67.1-33.9 113.6-78 113.6-24.3 0-42.6-20.1-36.7-44.8 7-29.5 20.5-61.3 20.5-82.6 0-19-10.2-34.9-31.4-34.9-24.9 0-44.9 25.7-44.9 60.2 0 22 7.4 36.8 7.4 36.8s-24.5 103.8-29 123.2c-5 21.4-3 51.6-.9 71.2C65.4 450.9 0 361.1 0 256 0 119 111 8 248 8s248 111 248 248z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    <a href="https://www.linkedin.com/in/srikanthethiraj" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    
+    
+</p>
+                    </div><!-- .site-nav-inside -->
+                </div><!-- .site-nav-wrap -->
+            </nav><!-- .site-navigation -->
+
+        </div><!-- .site-header-inside -->
+    </div><!-- .site-header-wrap -->
+</header><!-- .site-header -->
+        <div id="content" class="site-content fadeInDown delay_075s">
+            <div class="inner-wide">
+                <main id="main" class="site-main">
+    <article class="post-full inner">
+        <header class="post-header">
+            <div class="post-meta">
+                <time class="post-date" datetime=" 2026-05-02">
+                    May 2, 2026
+                </time>
+            </div><!-- .post-meta -->
+            <h1 class="post-title">Deploy AI Agents on AWS — Bedrock Agents vs AgentCore</h1>
+            
+            <p class="post-tags">
+                <a href="/tags/index.html#AI"
+                    rel="tag">AI</a>
+                <a href="/tags/index.html#AWS"
+                    rel="tag">AWS</a>
+                <a href="/tags/index.html#Python"
+                    rel="tag">Python</a>
+                <a href="/tags/index.html#Bedrock"
+                    rel="tag">Bedrock</a>
+                <a href="/tags/index.html#Agents"
+                    rel="tag">Agents</a>
+                <a href="/tags/index.html#AgentCore"
+                    rel="tag">AgentCore</a>
+                <a href="/tags/index.html#Strands"
+                    rel="tag">Strands</a>
+                
+            </p>
+            
+        </header><!-- .post-header -->
+        
+        <div class="post-thumbnail">
+            <img src="assets/images/posts/2026/article-8-hero.jpeg" alt="Deploy AI Agents on AWS — Bedrock Agents vs AgentCore">
+        </div>
+        
+        <div class="post-content">
+            <p>In Part 7, we built a multi-agent support system with Strands Agents — a supervisor that routes customer requests to three specialist agents, with human-in-the-loop safety for sensitive actions. It works on your machine. Now how do you run it in production?</p>
+
+<p>Here’s a story I keep hearing: teams ship on Bedrock Agents, love the speed — declare an agent, AWS runs it, done in minutes. Then they need a second agent. Then custom routing. Then human-in-the-loop. And they hit a ceiling.</p>
+
+<p>The good news: AWS has an answer for every stage of that journey. And the same Python tools work across all of them — you write the business logic once, the deployment wrapper changes.</p>
+
+<!--more-->
+
+<h2 id="one-codebase-three-deployment-paths">One Codebase, Three Deployment Paths</h2>
+
+<p>The tools you built in Part 7 (<code class="language-plaintext highlighter-rouge">track_order</code>, <code class="language-plaintext highlighter-rouge">process_refund</code>, <code class="language-plaintext highlighter-rouge">reset_password</code>) are plain Python functions. They work everywhere:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Deployment</th>
+      <th>How tools run</th>
+      <th>What changes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Local (Strands)</strong></td>
+      <td>Direct function calls in your process</td>
+      <td>Nothing — this is where you built them</td>
+    </tr>
+    <tr>
+      <td><strong>Bedrock Agents</strong></td>
+      <td>Lambda handler wraps the same functions</td>
+      <td>Add <code class="language-plaintext highlighter-rouge">lambda_handler</code> wrapper</td>
+    </tr>
+    <tr>
+      <td><strong>AgentCore Harness</strong></td>
+      <td>Tools connect via AgentCore Gateway/MCP</td>
+      <td>Declare tools in harness config</td>
+    </tr>
+    <tr>
+      <td><strong>AgentCore + Custom</strong></td>
+      <td>Same Strands code in a container</td>
+      <td>Add <code class="language-plaintext highlighter-rouge">@app.entrypoint</code> wrapper</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>You write the business logic once. The deployment wrapper changes, not the tools.</p>
+
+<hr />
+
+<h2 id="option-1-bedrock-agents--the-on-ramp">Option 1: Bedrock Agents — The On-Ramp</h2>
+
+<p>Bedrock Agents solved the first-agent problem. Declare an agent in the console or via API, attach Lambda functions for tools, and AWS handles the reasoning loop, tool execution, session memory, and scaling. Built-in Knowledge Bases for RAG, Guardrails for safety, console UI for non-developers. Zero orchestration code.</p>
+
+<p><strong>How your tools become Lambda functions:</strong></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">lambda_handler</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="n">function_name</span> <span class="o">=</span> <span class="n">event</span><span class="p">[</span><span class="sh">"</span><span class="s">function</span><span class="sh">"</span><span class="p">]</span>
+    <span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">[</span><span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">]:</span> <span class="n">p</span><span class="p">[</span><span class="sh">"</span><span class="s">value</span><span class="sh">"</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">event</span><span class="p">[</span><span class="sh">"</span><span class="s">parameters</span><span class="sh">"</span><span class="p">]}</span>
+
+    <span class="k">if</span> <span class="n">function_name</span> <span class="o">==</span> <span class="sh">"</span><span class="s">TrackOrder</span><span class="sh">"</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nf">track_order</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="sh">"</span><span class="s">order_id</span><span class="sh">"</span><span class="p">])</span>  <span class="c1"># Same function from Part 7!
+</span>        <span class="k">return</span> <span class="p">{</span><span class="sh">"</span><span class="s">response</span><span class="sh">"</span><span class="p">:</span> <span class="n">json</span><span class="p">.</span><span class="nf">dumps</span><span class="p">(</span><span class="n">result</span><span class="p">)}</span>
+</code></pre></div></div>
+
+<p><strong>How you deploy multi-agent:</strong> Bedrock Agents supports supervisor/collaborator patterns natively. Create each specialist as a separate agent with its own Lambda tools, then associate them with a supervisor using <code class="language-plaintext highlighter-rouge">associate_agent_collaborator</code>. The supervisor routes automatically based on natural language instructions — one API call, AWS handles delegation and response combination.</p>
+
+<p><strong>What Bedrock Agents does well:</strong></p>
+<ul>
+  <li>Zero orchestration code — configure, don’t build</li>
+  <li>Multi-agent collaboration built in</li>
+  <li>Built-in Knowledge Bases, Guardrails, and session memory</li>
+  <li>Console-first — non-developers can create and test agents</li>
+  <li>Production scaling and CloudWatch observability out of the box</li>
+</ul>
+
+<p><strong>The ceiling (structural, not cosmetic):</strong></p>
+<ul>
+  <li>No prompt caching — every turn pays full input token cost (managed loop doesn’t use Converse API)</li>
+  <li>No extended thinking, no multimodal input (<code class="language-plaintext highlighter-rouge">inputText</code> only)</li>
+  <li>Tools run sequentially — no parallel calling</li>
+  <li>Can’t add code-level routing logic (e.g., “if Platinum customer, prioritize billing”)</li>
+  <li>No single artifact to run locally — logic spread across IAM, Lambda, OpenAPI, Bedrock config</li>
+  <li>Changing model or tools requires prepare-and-redeploy</li>
+</ul>
+
+<p>What if you want the declarative experience back — but without these limitations? That’s the harness.</p>
+
+<hr />
+
+<h2 id="option-2-agentcore-harness--declarative-without-the-ceiling">Option 2: AgentCore Harness — Declarative Without the Ceiling</h2>
+
+<p>The <a href="https://aws.amazon.com/blogs/machine-learning/get-to-your-first-working-agent-in-minutes-announcing-new-features-in-amazon-bedrock-agentcore/">managed harness</a> brings back the “declare and deploy” experience, but on the AgentCore platform. Three API calls. No Lambda, no Dockerfile, no orchestration code. Powered by Strands under the hood.</p>
+
+<blockquote>
+  <p>Currently in preview: US West (Oregon), US East (N. Virginia), Asia Pacific (Sydney), Europe (Frankfurt).</p>
+</blockquote>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">agentcore</span><span class="p">.</span><span class="nf">create_agent</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="sh">"</span><span class="s">order-support</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">us.anthropic.claude-sonnet-4-5-20250929-v1:0</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">instructions</span><span class="o">=</span><span class="sh">"</span><span class="s">You are an order support agent. Help customers track packages.</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">track_order</span><span class="p">,</span> <span class="n">lookup_order_history</span><span class="p">],</span>
+<span class="p">)</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">agentcore</span><span class="p">.</span><span class="nf">invoke_agent</span><span class="p">(</span>
+    <span class="n">agent_name</span><span class="o">=</span><span class="sh">"</span><span class="s">order-support</span><span class="sh">"</span><span class="p">,</span>
+    <span class="n">prompt</span><span class="o">=</span><span class="sh">"</span><span class="s">Where is my order ORD-50435?</span><span class="sh">"</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>The key differentiator from Bedrock Agents: per-invocation overrides.</strong> Change the model, tools, or system prompt on any single call without redeploying:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Swap model for one call — no redeployment</span>
+agentcore invoke <span class="nt">--agent-name</span> order-support <span class="se">\</span>
+  <span class="nt">--model-id</span> anthropic.claude-3-5-haiku-20241022-v1:0 <span class="se">\</span>
+  <span class="nt">--prompt</span> <span class="s2">"Where is my order?"</span>
+</code></pre></div></div>
+
+<p>Tools connect via AgentCore Gateway using MCP. If you have existing Lambda functions from Bedrock Agents, wrap them behind a Gateway — the harness consumes them without rewriting Lambda code. Your investment carries forward.</p>
+
+<p><strong>What the harness does well:</strong></p>
+<ul>
+  <li>Three API calls to production — fastest deploy path</li>
+  <li>Per-invocation overrides — swap model, tools, prompt per call</li>
+  <li>Multi-model — Bedrock, OpenAI, Gemini, switch mid-session</li>
+  <li>Built-in code interpreter and shell access</li>
+  <li>MCP tool discovery via Gateway — reuse existing Lambdas</li>
+  <li>Custom container images for non-standard environments</li>
+</ul>
+
+<p><strong>The ceiling:</strong></p>
+<ul>
+  <li><strong>Single agent only</strong> — no multi-agent routing, no supervisor/collaborator</li>
+  <li>No built-in Knowledge Bases or Guardrails (connect via Gateway/MCP)</li>
+  <li>Custom orchestration loops (tree-of-thought, A2A handoffs) need Runtime</li>
+  <li>In preview — 4 regions, API may change</li>
+</ul>
+
+<p>The harness is the fastest path for single agents. But our Part 7 system has a supervisor routing to three specialists with human-in-the-loop safety. That’s custom orchestration — config alone can’t express it.</p>
+
+<hr />
+
+<h2 id="option-3-agentcore--custom-code--full-control">Option 3: AgentCore + Custom Code — Full Control</h2>
+
+<p>This is where our Part 7 system ends up. The supervisor, three specialist agents, and human-in-the-loop routing — deployed on managed infrastructure with the same code we tested locally.</p>
+
+<p><strong>Why not Bedrock Agents (Option 1)?</strong> Both do multi-agent. The difference:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Bedrock Agents</th>
+      <th>AgentCore + Custom</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Routing logic</strong></td>
+      <td>Natural language instructions</td>
+      <td>Your Python code — any logic</td>
+    </tr>
+    <tr>
+      <td><strong>Human-in-the-loop</strong></td>
+      <td>Not built-in</td>
+      <td>Your code (tool thresholds + flags)</td>
+    </tr>
+    <tr>
+      <td><strong>Local testing</strong></td>
+      <td>Needs deployed agents</td>
+      <td><code class="language-plaintext highlighter-rouge">python agent_app.py</code> + curl</td>
+    </tr>
+    <tr>
+      <td><strong>Prompt caching</strong></td>
+      <td>Not available</td>
+      <td>Available (direct API)</td>
+    </tr>
+    <tr>
+      <td><strong>Framework</strong></td>
+      <td>Bedrock Agents only</td>
+      <td>Strands, LangGraph, CrewAI, anything</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>How it works:</strong></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">bedrock_agentcore.runtime</span> <span class="kn">import</span> <span class="n">BedrockAgentCoreApp</span>
+<span class="kn">from</span> <span class="n">orchestrator</span> <span class="kn">import</span> <span class="n">SupportOrchestrator</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="nc">BedrockAgentCoreApp</span><span class="p">()</span>
+<span class="n">orchestrator</span> <span class="o">=</span> <span class="nc">SupportOrchestrator</span><span class="p">()</span>
+
+<span class="nd">@app.entrypoint</span>
+<span class="k">def</span> <span class="nf">invoke</span><span class="p">(</span><span class="n">payload</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="p">.</span><span class="nf">handle_request</span><span class="p">(</span>
+        <span class="n">customer_id</span><span class="o">=</span><span class="n">payload</span><span class="p">[</span><span class="sh">"</span><span class="s">customer_id</span><span class="sh">"</span><span class="p">],</span>
+        <span class="n">message</span><span class="o">=</span><span class="n">payload</span><span class="p">[</span><span class="sh">"</span><span class="s">prompt</span><span class="sh">"</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+</code></pre></div></div>
+
+<p>Test locally, deploy with one command:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python agent_app.py  <span class="c"># Test on port 8080</span>
+agentcore deploy <span class="nt">--agent-name</span> ecommerce-support  <span class="c"># Deploy to production</span>
+</code></pre></div></div>
+
+<p>Migrating from Bedrock Agents? The CLI scaffolds the project:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>agentcore import-agent <span class="nt">--agent-id</span> YOUR_AGENT_ID <span class="nt">--target-platform</span> strands
+</code></pre></div></div>
+
+<p><strong>What AgentCore adds on top of your code:</strong></p>
+<ul>
+  <li>Auto-scaling, microVM isolation per session, persistent filesystem</li>
+  <li>IAM roles per agent, CloudWatch traces/metrics/logs</li>
+  <li>Agents can suspend mid-task and resume (human approval workflows)</li>
+  <li>Every Bedrock feature — prompt caching (up to 90% savings), extended thinking, multimodal</li>
+</ul>
+
+<p><strong>The tradeoff:</strong></p>
+<ul>
+  <li>You write the orchestration code and deployment wrapper</li>
+  <li>No built-in KB, Guardrails, or console UI</li>
+  <li>Runtime compute cost on top of model costs</li>
+</ul>
+
+<hr />
+
+<h2 id="how-to-decide">How to Decide</h2>
+
+<p><strong>“I don’t want to write orchestration code.”</strong>
+→ <strong>Bedrock Agents</strong>. Managed single + multi-agent, built-in KB/Guardrails/console. Tools as Lambda functions.</p>
+
+<p><strong>“I have a single agent and want fast deploy with multi-model flexibility.”</strong>
+→ <strong>AgentCore Harness</strong>. Three API calls, per-invocation overrides, Bedrock + OpenAI + Gemini. <strong>Single agents only.</strong></p>
+
+<p><strong>“I need custom routing, human-in-the-loop, or local testing for multi-agent.”</strong>
+→ <strong>AgentCore + Custom Code</strong>. Bring your Strands orchestrator, test locally, deploy to managed infra.</p>
+
+<p>You don’t pick once. Start on Harness, stretch with custom containers, graduate to Runtime when the loop itself is the limitation.</p>
+
+<h2 id="comparison-table">Comparison Table</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Bedrock Agents</th>
+      <th>AgentCore Harness</th>
+      <th>AgentCore + Custom</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Best for</strong></td>
+      <td>Managed agents, no-code teams</td>
+      <td><strong>Single agent</strong>, fast iteration</td>
+      <td>Multi-agent at scale</td>
+    </tr>
+    <tr>
+      <td><strong>Tools</strong></td>
+      <td>Lambda functions</td>
+      <td>Gateway/MCP</td>
+      <td>Your code</td>
+    </tr>
+    <tr>
+      <td><strong>Prompt caching</strong></td>
+      <td>Not available</td>
+      <td>Check docs</td>
+      <td>Available</td>
+    </tr>
+    <tr>
+      <td><strong>Per-invocation overrides</strong></td>
+      <td>Redeploy to change</td>
+      <td>Model, tools, prompt per call</td>
+      <td>Full control in code</td>
+    </tr>
+    <tr>
+      <td><strong>Knowledge Base</strong></td>
+      <td>Built-in</td>
+      <td>Connect via Gateway</td>
+      <td>Integrate yourself</td>
+    </tr>
+    <tr>
+      <td><strong>Guardrails</strong></td>
+      <td>Built-in</td>
+      <td>Configure separately</td>
+      <td>Integrate yourself</td>
+    </tr>
+    <tr>
+      <td><strong>Multi-model</strong></td>
+      <td>Bedrock only</td>
+      <td>Bedrock, OpenAI, Gemini</td>
+      <td>Any model</td>
+    </tr>
+    <tr>
+      <td><strong>Multi-agent</strong></td>
+      <td>Supervisor/collaborator</td>
+      <td><strong>Not supported</strong></td>
+      <td>Deploy any orchestration</td>
+    </tr>
+    <tr>
+      <td><strong>Local testing</strong></td>
+      <td>Needs deployed agent</td>
+      <td>N/A — cloud</td>
+      <td>Run on port 8080</td>
+    </tr>
+    <tr>
+      <td><strong>Migration</strong></td>
+      <td>N/A</td>
+      <td>Gateway wraps Lambdas</td>
+      <td><code class="language-plaintext highlighter-rouge">agentcore import-agent</code></td>
+    </tr>
+    <tr>
+      <td><strong>Status</strong></td>
+      <td>GA</td>
+      <td>Preview (4 regions)</td>
+      <td>GA</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="getting-started">Getting Started</h2>
+
+<p>If you haven’t built the multi-agent system yet, start with <a href="https://blog.srikanthethiraj.com/build-a-multi-agent-support-system-with-strands-agents-and-bedrock">Part 7</a>.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd </span>agentic-ai-system/agentcore-deploy
+python agent_app.py  <span class="c"># Test locally on port 8080</span>
+agentcore deploy <span class="nt">--agent-name</span> ecommerce-support  <span class="c"># Deploy</span>
+</code></pre></div></div>
+
+<h2 id="tear-down">Tear Down</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>agentcore delete-runtime <span class="nt">--agent-name</span> ecommerce-support
+</code></pre></div></div>
+
+<p>For Bedrock Agents, delete agents and Lambda functions via console or API.</p>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>This is Part 8 of an ongoing series:</p>
+
+<ul>
+  <li><strong>Part 1</strong> — <a href="https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock">Insurance Claim Processor</a>: Bedrock basics, prompt templates, simple RAG</li>
+  <li><strong>Part 2</strong> — <a href="https://blog.srikanthethiraj.com/build-a-financial-services-ai-assistant-with-amazon-bedrock">Financial Services AI Assistant</a>: benchmarking, circuit breakers, cross-region resilience</li>
+  <li><strong>Part 3</strong> — <a href="https://blog.srikanthethiraj.com/build-a-customer-feedback-pipeline-with-amazon-bedrock">Customer Feedback Pipeline</a>: multimodal data processing</li>
+  <li><strong>Part 4</strong> — <a href="https://blog.srikanthethiraj.com/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch">RAG Knowledge Base</a>: vector stores, embeddings, document chunking</li>
+  <li><strong>Part 5</strong> — <a href="https://blog.srikanthethiraj.com/optimize-rag-search-with-hybrid-retrieval-and-reranking-on-aws">Advanced Search &amp; Retrieval</a>: hybrid search, reranking, query expansion</li>
+  <li><strong>Part 6</strong> — <a href="https://blog.srikanthethiraj.com/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance">AI Support Assistant</a>: guardrails, prompt management, conversation flows</li>
+  <li><strong>Part 7</strong> — <a href="https://blog.srikanthethiraj.com/build-a-multi-agent-support-system-with-strands-agents-and-bedrock">Multi-Agent Support System</a>: Strands Agents, multi-agent orchestration</li>
+  <li><strong>Part 8</strong> — Deploy AI Agents on AWS (this post): Bedrock Agents vs AgentCore</li>
+  <li><strong>Part 9</strong> — Multi-Tier Model Deployment &amp; Enterprise Integration</li>
+  <li><strong>Part 10</strong> — AI Safety — Guardrails, PII Protection &amp; Threat Detection</li>
+  <li><strong>Part 11</strong> — Cost &amp; Latency Optimization for GenAI</li>
+  <li><strong>Part 12</strong> — AI Governance — Compliance, Fairness &amp; Model Cards</li>
+  <li><strong>Part 13</strong> — Testing, Evaluation &amp; Troubleshooting GenAI Systems</li>
+</ul>
+
+<p>Repository: <a href="https://github.com/srikanthethiraj/agentic-ai-system">github.com/srikanthethiraj/agentic-ai-system</a></p>
+
+<hr />
+
+<p><em>I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on <a href="https://www.linkedin.com/in/srikanthethiraj/">LinkedIn</a>.</em></p>
+
+        </div>
+        <footer class="post-footer">
+            <div class="post-share">
+                <span class="post-share-title">Share:</span>
+                <a target="_blank"
+                    href="https://twitter.com/share?text=Deploy+AI+Agents+on+AWS+%E2%80%94+Bedrock+Agents+vs+AgentCore&amp;url=https://blog.srikanthethiraj.com/deploy-ai-agents-on-aws-bedrock-agents-vs-agentcore">Twitter</a>
+                <a target="_blank"
+                    href="https://www.facebook.com/sharer/sharer.php?u=https://blog.srikanthethiraj.com/deploy-ai-agents-on-aws-bedrock-agents-vs-agentcore">Facebook</a>
+            </div><!-- .share-post -->
+        </footer>
+        
+<section id="comments-area" class="comments-area">
+    <h2 class="comments-title">Comments</h2>
+    <div class="comments-inside">
+        <div id="disqus_thread"></div>
+    </div><!-- .comments-inside -->
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by
+            Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</section><!-- .comments-area -->
+<script type="text/javascript">
+    var disqus_shortname = 'justgoodthemes';
+    var disqus_developer = 0;
+    (function () {
+        var dsq = document.createElement('script');
+        dsq.type = 'text/javascript';
+        dsq.async = true;
+        dsq.src = window.location.protocol + '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+
+    </article>
+    
+    <section class="newsletter-box inner">
+    <h2 class="newsletter-box-title">Subscribe to Srikanth Ethiraj newsletter</h2>
+    <p>Get the latest and greatest from Srikanth Ethiraj delivered straight to your inbox every week.</p>
+    <!-- Begin MailChimp Signup Form -->
+    <div id="mc_embed_signup">
+        <form action="https://srikanthethiraj.us19.list-manage.com/subscribe/post?u=42acdd8bd6be3355d0c6df855&amp;id=72ab533508&amp;f_id=00c336e3f0" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form"
+            class="validate gh-subscribe-form" target="_blank" novalidate>
+            <label for="mce-EMAIL" class="screen-reader-text">Email Address</label>
+            <input type="email" value="" name="EMAIL" class="required email subscribe-email" id="mce-EMAIL" placeholder="Your email address">
+            <input type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe" class="button">
+        </form>
+    </div>
+    <!--End mc_embed_signup-->
+</section><!-- .widget -->
+    
+    <section class="read-next inner">
+        <h2 class="read-next-title">Read Next</h2>
+        
+        <article class="post">
+            <header class="post-header">
+                <div class="post-meta">
+                    <time class="published" datetime="April 30, 2026">April 30, 2026</time>
+                </div>
+                <h3 class="post-title"><a href="/build-a-multi-agent-support-system-with-strands-agents-and-bedrock">Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock</a>
+                </h3>
+                <p class="post-tags">
+
+                    
+                    <a
+                        href="/tags/index.html#AI" rel="tag">AI</a><a
+                        href="/tags/index.html#AWS" rel="tag">AWS</a><a
+                        href="/tags/index.html#Python" rel="tag">Python</a><a
+                        href="/tags/index.html#Bedrock" rel="tag">Bedrock</a><a
+                        href="/tags/index.html#Strands" rel="tag">Strands</a><a
+                        href="/tags/index.html#Agents" rel="tag">Agents</a><a
+                        href="/tags/index.html#AgentCore" rel="tag">AgentCore</a>
+                    
+
+                </p>
+            </header>
+        </article>
+        
+        
+    </section><!-- .read-next -->
+    <!-- Create a sorted array of tags -->
+     
+    <section class="tagcloud inner">
+        <h2 class="tagcloud-title">Tags</h2>
+        <div class="tag-links">
+            
+            <a href='/tags/#AI'>AI</a>
+            
+            <a href='/tags/#AWS'>AWS</a>
+            
+            <a href='/tags/#AgentCore'>AgentCore</a>
+            
+            <a href='/tags/#Agents'>Agents</a>
+            
+            <a href='/tags/#Bedrock'>Bedrock</a>
+            
+            <a href='/tags/#Comprehend'>Comprehend</a>
+            
+            <a href='/tags/#DynamoDB'>DynamoDB</a>
+            
+            <a href='/tags/#Embeddings'>Embeddings</a>
+            
+            <a href='/tags/#Guardrails'>Guardrails</a>
+            
+            <a href='/tags/#Lambda'>Lambda</a>
+            
+            <a href='/tags/#OpenSearch'>OpenSearch</a>
+            
+            <a href='/tags/#Python'>Python</a>
+            
+            <a href='/tags/#RAG'>RAG</a>
+            
+            <a href='/tags/#Search'>Search</a>
+            
+            <a href='/tags/#StepFunctions'>StepFunctions</a>
+            
+            <a href='/tags/#Strands'>Strands</a>
+            
+            <a href='/tags/#Textract'>Textract</a>
+            
+            <a href='/tags/#Transcribe'>Transcribe</a>
+            
+        </div><!-- .tag-links -->
+    </section><!-- .tagcloud -->
+</main><!-- .site-main -->
+
+                
+
+                <footer id="colophon" class="site-footer">
+    <p class="site-info inner">
+        <a href="#">Srikanth Ethiraj</a> &copy; 2026. Royce theme by
+        <a target="_blank" href="https://justgoodthemes.com/">JustGoodThemes</a>.
+        <br />
+        Powered by <a target="_blank" href="https://jekyllrb.com/">Jekyll</a>.
+    </p>
+    <a id="back-to-top" class="back-to-top" href="#page">
+        <span class="icon-arrow-up" aria-hidden="true"></span>
+        <span class="screen-reader-text">Back to top</span>
+    </a>
+</footer><!-- .site-footer -->
+            </div><!-- .inner-wide -->
+        </div><!-- .site-content -->
+    </div><!-- .site -->
+
+    
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-MZXMBW0NRB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-MZXMBW0NRB', { 'anonymize_ip': true });
+  </script>
+
+    <!-- Javascript Assets -->
+    <script src="/assets/js/jquery-3.3.1.min.js"></script>
+    <script src="/assets/js/plugins.js"></script>
+    <script src="/assets/js/custom.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,95 @@
+{
+  "decisions": [
+    {
+      "ticket_id": "TKT-001",
+      "customer_id": "CUST-1001",
+      "message": "Where is my order ORD-50435? It was supposed to arrive yesterday.",
+      "agents_chosen": [
+        "order"
+      ],
+      "reasoning": "Customer is inquiring about the shipping status and location of their order (ORD-50435) which was expected to arrive yesterday. This is a clear package tracking and shipping status issue that falls under ORDER AGENT responsibilities.",
+      "confidence": 0.9,
+      "human_review": false
+    },
+    {
+      "ticket_id": "TKT-002",
+      "customer_id": "CUST-1003",
+      "message": "I think I was charged twice for order ORD-50398. Can you check my payment history?",
+      "agents_chosen": [
+        "billing"
+      ],
+      "reasoning": "Customer is reporting a potential duplicate charge for order ORD-50398 and requesting a review of their payment history. This is clearly a billing issue involving charges and potential refund requirements that falls under BILLING AGENT responsibilities.",
+      "confidence": 0.9,
+      "human_review": true
+    },
+    {
+      "ticket_id": "TKT-003",
+      "customer_id": "CUST-1002",
+      "message": "I can't log into my account. Can you reset my password?",
+      "agents_chosen": [
+        "account"
+      ],
+      "reasoning": "Customer is experiencing login issues and requesting a password reset. This is a standard account access problem that falls directly under ACCOUNT AGENT responsibilities for login issues and password resets.",
+      "confidence": 0.9,
+      "human_review": false
+    },
+    {
+      "ticket_id": "TKT-004",
+      "customer_id": "CUST-1003",
+      "message": "I was charged twice for my yoga mat order AND I received the wrong color. I want a refund and the correct item shipped.",
+      "agents_chosen": [
+        "billing",
+        "order"
+      ],
+      "reasoning": "Customer has two distinct issues: (1) duplicate charge requiring billing investigation and potential refund, and (2) wrong item received requiring return/exchange and shipment of correct item. This requires both BILLING AGENT for the duplicate charge/refund and ORDER AGENT for the wrong item return/replacement.",
+      "confidence": 0.9,
+      "human_review": true
+    },
+    {
+      "ticket_id": "TKT-005",
+      "customer_id": "CUST-1003",
+      "message": "I need a full refund of $167.76 for order ORD-50398. The yoga mat was the wrong color and I've been charged twice.",
+      "agents_chosen": [
+        "billing",
+        "order"
+      ],
+      "reasoning": "Customer is requesting a $167.76 refund for order ORD-50398 due to two issues: (1) duplicate charging requiring BILLING AGENT investigation and refund processing, and (2) wrong color item received requiring ORDER AGENT for return processing. Both agents needed to coordinate the full refund and return.",
+      "confidence": 0.9,
+      "human_review": true
+    },
+    {
+      "ticket_id": "TKT-006",
+      "customer_id": "CUST-1001",
+      "message": "I want to cancel order ORD-50440. I changed my mind.",
+      "agents_chosen": [
+        "order"
+      ],
+      "reasoning": "Customer is requesting order cancellation for ORD-50440 due to changing their mind. This is a standard order cancellation request that falls under ORDER AGENT responsibilities.",
+      "confidence": 0.9,
+      "human_review": false
+    },
+    {
+      "ticket_id": "TKT-007",
+      "customer_id": "CUST-1002",
+      "message": "I need to update my email address to james.new@email.com",
+      "agents_chosen": [
+        "account"
+      ],
+      "reasoning": "Customer is requesting to update their email address from j.wilson@email.com to james.new@email.com. This is an account information change that falls under ACCOUNT AGENT responsibilities for email/phone/address changes.",
+      "confidence": 0.9,
+      "human_review": false
+    },
+    {
+      "ticket_id": "TKT-008",
+      "customer_id": "CUST-1001",
+      "message": "The mobile app keeps crashing when I try to check my orders. Is there an outage?",
+      "agents_chosen": [
+        "account"
+      ],
+      "reasoning": "Customer is reporting mobile app crashes and asking about potential outages. This is an app problem/technical issue that falls under ACCOUNT AGENT responsibilities for app problems and technical support.",
+      "confidence": 0.9,
+      "human_review": false
+    }
+  ],
+  "total_tickets": 8
+}

@@ -1,0 +1,185 @@
+{
+  "tickets_processed": 8,
+  "results": [
+    {
+      "ticket_id": "TKT-001",
+      "customer_id": "CUST-1001",
+      "message": "Where is my order ORD-50435? It was supposed to arrive yesterday.",
+      "routing": {
+        "agents": [
+          "order"
+        ],
+        "reason": "Customer is inquiring about package tracking and late delivery for order ORD-50435. This is a straightforward order tracking and shipping status issue that falls under the Order Agent's responsibilities.",
+        "priority": "medium",
+        "needs_human_review": false
+      },
+      "responses": [
+        {
+          "agent": "order",
+          "response": "I can see your order ORD-50435 for the Ergonomic Standing Desk Mat. Here's the current status:\n\n**Shipping Details:**\n- **Status:** In Transit\n- **Carrier:** FedEx\n- **Tracking Number:** 794644790132\n- **Shipped Date:** April 19, 2026\n- **Estimated Delivery:** April 23, 2026\n\nYour package is currently on its way and is estimated to arrive on April 23rd, not yesterday. It's possible there was confusion about the delivery date, or perhaps you were expecting it sooner based on an earlier estimate.\n\nYou can track your package directly with FedEx using tracking number **794644790132** for real-time updates on its location and delivery status.\n\nIf the package doesn't arrive by the April 23rd estimated delivery date, or if you believe there was an error with the original delivery estimate provided to you, please let me know and I can escalate this to investigate further.\n",
+          "latency_ms": 8944.390000018757
+        }
+      ],
+      "total_latency_ms": 17008.687458001077
+    },
+    {
+      "ticket_id": "TKT-002",
+      "customer_id": "CUST-1003",
+      "message": "I think I was charged twice for order ORD-50398. Can you check my payment history?",
+      "routing": {
+        "agents": [
+          "billing"
+        ],
+        "reason": "Customer reports a potential duplicate charge for order ORD-50398 and is requesting payment history review. This is a billing issue involving charges and requires the Billing Agent to investigate the payment records and resolve any duplicate charge concerns.",
+        "priority": "high",
+        "needs_human_review": true
+      },
+      "responses": [
+        {
+          "agent": "billing",
+          "response": "You're absolutely right! I can confirm that you were charged twice for order ORD-50398. Here's what I found:\n\n**Duplicate Charge Detected:**\n- **Order:** ORD-50398\n- **Amount charged twice:** $167.76\n- **Date:** April 10, 2026\n- **Payment method:** Amex ending in 1234\n\nThis was flagged in our system as a duplicate charge. I sincerely apologize for this error.\n\nSince this refund is over $50, it will require manager approval. I can process this refund request for you right now, and you'll receive a notification within 24 hours once it's approved. The refund will then take 3-5 business days to appear back on your Amex.\n\nWould you like me to proceed with the refund request for $167.76?\n",
+          "latency_ms": 6573.596792004537
+        }
+      ],
+      "total_latency_ms": 14040.840292000212
+    },
+    {
+      "ticket_id": "TKT-003",
+      "customer_id": "CUST-1002",
+      "message": "I can't log into my account. Can you reset my password?",
+      "routing": {
+        "agents": [
+          "account"
+        ],
+        "reason": "Customer is unable to log into their account and is requesting a password reset. This is a straightforward account access issue that falls under the Account Agent's responsibilities for login issues and password resets.",
+        "priority": "medium",
+        "needs_human_review": false
+      },
+      "responses": [
+        {
+          "agent": "account",
+          "response": "Perfect! I've sent a password reset email to **j.wilson@email.com**. \n\nHere's what to do next:\n1. Check your email inbox (and spam folder, just in case)\n2. Click the reset link in the email\n3. Create a new password\n4. The link will expire in 24 hours\n\nOnce you've reset your password, you should be able to log in with your new credentials. If you don't receive the email within a few minutes or run into any other issues, please let me know and I'll be happy to help further!\n",
+          "latency_ms": 6041.500166989863
+        }
+      ],
+      "total_latency_ms": 12080.938083003275
+    },
+    {
+      "ticket_id": "TKT-004",
+      "customer_id": "CUST-1003",
+      "message": "I was charged twice for my yoga mat order AND I received the wrong color. I want a refund and the correct item shipped.",
+      "routing": {
+        "agents": [
+          "billing",
+          "order"
+        ],
+        "reason": "Customer has two distinct issues: (1) duplicate charge requiring Billing Agent to investigate and process refund, and (2) wrong item received requiring Order Agent to arrange return and ship correct color yoga mat. Both agents needed to fully resolve this multi-faceted complaint.",
+        "priority": "high",
+        "needs_human_review": true
+      },
+      "responses": [
+        {
+          "agent": "billing",
+          "response": "Perfect! Here's what I've done for you:\n\n**\u2713 Refund Processed:**\n- **Amount:** $167.76 for the duplicate charge\n- **Status:** Pending manager approval (required for amounts over $50)\n- **Timeline:** You'll receive approval notification within 24 hours, then 3-5 business days for the refund to appear on your Amex ending in 1234\n\n**\u2713 Wrong Item Issue Escalated:**\n- **Ticket Number:** TKT-20260429163300\n- **Priority:** Medium\n- **Estimated Response:** 2 hours\n- A fulfillment specialist will contact you to arrange shipping of the correct color yoga mat\n\nYou should receive an email shortly with your ticket number, and our team will reach out within 2 hours to resolve the wrong color issue and get the correct yoga mat sent to you.\n\nIs there anything else I can help you with regarding your billing?\n",
+          "latency_ms": 13275.920165993739
+        },
+        {
+          "agent": "order",
+          "response": "**Your case has been escalated!**\n\n**Ticket Number:** TKT-20260429163315  \n**Priority:** High  \n**Estimated Response Time:** 15 minutes\n\nA human support agent will contact you shortly to:\n- Verify and refund the duplicate charge\n- Ship you the correct color yoga mat\n- Provide a prepaid return label for the incorrect item\n\nThey'll have full access to your billing records and can make this right for you immediately. I apologize for both the wrong item and the billing issue - this shouldn't have happened. Our team will get this resolved quickly.\n\nIs there anything else I can help you with while you wait for the agent to reach out?\n",
+          "latency_ms": 14482.963707996532
+        }
+      ],
+      "total_latency_ms": 35980.61733401846
+    },
+    {
+      "ticket_id": "TKT-005",
+      "customer_id": "CUST-1003",
+      "message": "I need a full refund of $167.76 for order ORD-50398. The yoga mat was the wrong color and I've been charged twice.",
+      "routing": {
+        "agents": [
+          "billing",
+          "order"
+        ],
+        "reason": "Customer requesting full refund of $167.76 due to two issues: (1) duplicate charge requiring Billing Agent to verify and process refund, and (2) wrong color item received requiring Order Agent to handle the return/wrong item issue. Both agents needed to investigate the duplicate charge claim and wrong item fulfillment error.",
+        "priority": "high",
+        "needs_human_review": true
+      },
+      "responses": [
+        {
+          "agent": "billing",
+          "response": "I understand your frustration - you were charged twice AND received the wrong color. Let me clarify what's happening:\n\n**You're getting refunded $167.76** - I've already submitted that refund request for the duplicate charge on order ORD-50398. This is currently pending manager approval (required for amounts over $50), and you'll be notified within 24 hours.\n\n**Important clarification:** \nSince you were charged twice for the same order, you paid $335.52 total ($167.76 x 2) but should have only paid $167.76 once. The refund I processed will return one of those charges ($167.76) back to you.\n\n**Regarding the wrong color yoga mat:**\nSince you received the wrong item, you have options:\n1. Keep the payment for the order but receive the correct color item (replacement)\n2. Return the wrong item and get a full refund of the remaining $167.76\n\nWhich would you prefer? If you want a complete refund for the order (not just the duplicate charge), I can process an additional refund request for the original $167.76 charge due to receiving the wrong item. That would mean you'd get back both charges totaling $335.52.\n\nWould you like me to process a second refund for $167.76 for receiving the wrong color, giving you a complete refund?\n",
+          "latency_ms": 7467.18699997291
+        },
+        {
+          "agent": "order",
+          "response": "I completely understand your frustration with this situation. However, I want to make sure we resolve this correctly for you.\n\n**Important clarification:** Order ORD-50398 totaled $167.76 and included **three items**:\n1. Premium Yoga Mat (wrong color received)\n2. Resistance Band Set\n3. Foam Roller\n\n**Before processing a full refund, I need to confirm:**\n- Do you want to return ALL three items for a complete $167.76 refund?\n- OR do you want to keep the Resistance Band Set and Foam Roller, and only get a refund/replacement for the yoga mat?\n\n**Regarding the duplicate charge:** The support agent who will contact you shortly (Ticket #TKT-20260429163315) will investigate your payment records to confirm if you were actually charged twice. If so, one full charge of $167.76 will be refunded immediately regardless of what you decide about the items.\n\nThe human agent I've escalated this to has the authority to:\n- \u2705 Investigate and refund any duplicate charges\n- \u2705 Process a full refund if you want to return everything\n- \u2705 Send you the correct yoga mat color and only refund that item\n- \u2705 Provide return labels for whatever you're sending back\n\nThey should be reaching out within 15 minutes. Could you let them know your preference when they contact you, or let me know now how you'd like to proceed with the items?\n",
+          "latency_ms": 8122.911583981477
+        }
+      ],
+      "total_latency_ms": 23099.00129196467
+    },
+    {
+      "ticket_id": "TKT-006",
+      "customer_id": "CUST-1001",
+      "message": "I want to cancel order ORD-50440. I changed my mind.",
+      "routing": {
+        "agents": [
+          "order"
+        ],
+        "reason": "Customer wants to cancel order ORD-50440 due to change of mind. This is a straightforward order cancellation request that falls under the Order Agent's responsibilities.",
+        "priority": "medium",
+        "needs_human_review": false
+      },
+      "responses": [
+        {
+          "agent": "order",
+          "response": "**\u2705 Cancellation Confirmed!**\n\n- **Order ID:** ORD-50440\n- **Status:** Cancelled\n- **Refund Amount:** $97.98\n- **Refund Timeline:** 3-5 business days\n\nYour refund of $97.98 will be credited back to your original payment method within 3-5 business days. You won't be charged for this order.\n\nIs there anything else I can help you with today?\n",
+          "latency_ms": 8101.279958966188
+        }
+      ],
+      "total_latency_ms": 13729.544166999403
+    },
+    {
+      "ticket_id": "TKT-007",
+      "customer_id": "CUST-1002",
+      "message": "I need to update my email address to james.new@email.com",
+      "routing": {
+        "agents": [
+          "account"
+        ],
+        "reason": "Customer wants to update their email address from j.wilson@email.com to james.new@email.com. This is an account information change that falls under the Account Agent's responsibilities for email/phone/address changes.",
+        "priority": "medium",
+        "needs_human_review": false
+      },
+      "responses": [
+        {
+          "agent": "account",
+          "response": "Great! I've initiated the email address update to **james.new@email.com**.\n\nFor security purposes, you'll need to verify this change:\n1. Check **both** email addresses:\n   - Your current email: **j.wilson@email.com**\n   - Your new email: **james.new@email.com**\n2. Click the verification links in both emails\n3. You must complete verification within **48 hours**\n\nOnce you've confirmed both emails, your account email address will be updated to james.new@email.com. This extra verification step helps protect your account from unauthorized changes.\n\nIf you don't receive the verification emails within a few minutes, please check your spam folders. Let me know if you need any assistance!\n",
+          "latency_ms": 6240.267000044696
+        }
+      ],
+      "total_latency_ms": 12255.71470905561
+    },
+    {
+      "ticket_id": "TKT-008",
+      "customer_id": "CUST-1001",
+      "message": "The mobile app keeps crashing when I try to check my orders. Is there an outage?",
+      "routing": {
+        "agents": [
+          "account"
+        ],
+        "reason": "Customer is experiencing mobile app crashes and asking about potential outages. This is a technical app problem that falls under the Account Agent's responsibilities for app problems and access issues.",
+        "priority": "medium",
+        "needs_human_review": false
+      },
+      "responses": [
+        {
+          "agent": "account",
+          "response": "Good news - the mobile app is currently **operational** with 99.9% uptime and normal response times. There are no active outages or incidents affecting the app.\n\nSince the app is working normally on our end, let's try some troubleshooting steps to resolve the crashing issue:\n\n1. **Force close and restart the app** - Completely close the app and reopen it\n2. **Check for updates** - Make sure you have the latest version of the app installed\n3. **Clear app cache** (if on Android) - Go to Settings > Apps > [Our App] > Clear Cache\n4. **Restart your device** - A simple restart can often resolve app issues\n5. **Reinstall the app** - If the problem persists, try uninstalling and reinstalling the app\n\n**Additional tips:**\n- Ensure you have a stable internet connection\n- Check that your device's operating system is up to date\n- Make sure you have sufficient storage space on your device\n\nIf you've tried these steps and the app is still crashing, please let me know:\n- What device and operating system version you're using\n- When the crashes started\n- If you see any error messages\n\nI can then escalate this to our technical team for further investigation. In the meantime, you can also access your orders through our website as an alternative!\n",
+          "latency_ms": 8788.527124968823
+        }
+      ],
+      "total_latency_ms": 16005.991041951347
+    }
+  ]
+}

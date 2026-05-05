@@ -5,9 +5,396 @@
     <description>Building AI applications on AWS — one project at a time.</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Thu, 23 Apr 2026 16:25:28 -0500</pubDate>
-    <lastBuildDate>Thu, 23 Apr 2026 16:25:28 -0500</lastBuildDate>
+    <pubDate>Mon, 04 May 2026 22:41:17 -0500</pubDate>
+    <lastBuildDate>Mon, 04 May 2026 22:41:17 -0500</lastBuildDate>
     <generator>Jekyll v4.4.1</generator>
+    
+      <item>
+        <title>Deploy AI Agents on AWS — Bedrock Agents vs AgentCore</title>
+        <description>&lt;p&gt;In Part 7, we built a multi-agent support system with Strands Agents — a supervisor that routes customer requests to three specialist agents, with human-in-the-loop safety for sensitive actions. It works on your machine. Now how do you run it in production?&lt;/p&gt;
+
+&lt;p&gt;Here’s a story I keep hearing: teams ship on Bedrock Agents, love the speed — declare an agent, AWS runs it, done in minutes. Then they need a second agent. Then custom routing. Then human-in-the-loop. And they hit a ceiling.&lt;/p&gt;
+
+&lt;p&gt;The good news: AWS has an answer for every stage of that journey. And the same Python tools work across all of them — you write the business logic once, the deployment wrapper changes.&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;one-codebase-three-deployment-paths&quot;&gt;One Codebase, Three Deployment Paths&lt;/h2&gt;
+
+&lt;p&gt;The tools you built in Part 7 (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;track_order&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;process_refund&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;reset_password&lt;/code&gt;) are plain Python functions. They work everywhere:&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Deployment&lt;/th&gt;
+      &lt;th&gt;How tools run&lt;/th&gt;
+      &lt;th&gt;What changes&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Local (Strands)&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Direct function calls in your process&lt;/td&gt;
+      &lt;td&gt;Nothing — this is where you built them&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Bedrock Agents&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Lambda handler wraps the same functions&lt;/td&gt;
+      &lt;td&gt;Add &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lambda_handler&lt;/code&gt; wrapper&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;AgentCore Harness&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Tools connect via AgentCore Gateway/MCP&lt;/td&gt;
+      &lt;td&gt;Declare tools in harness config&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;AgentCore + Custom&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Same Strands code in a container&lt;/td&gt;
+      &lt;td&gt;Add &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;@app.entrypoint&lt;/code&gt; wrapper&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;You write the business logic once. The deployment wrapper changes, not the tools.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;option-1-bedrock-agents--the-on-ramp&quot;&gt;Option 1: Bedrock Agents — The On-Ramp&lt;/h2&gt;
+
+&lt;p&gt;Bedrock Agents solved the first-agent problem. Declare an agent in the console or via API, attach Lambda functions for tools, and AWS handles the reasoning loop, tool execution, session memory, and scaling. Built-in Knowledge Bases for RAG, Guardrails for safety, console UI for non-developers. Zero orchestration code.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;How your tools become Lambda functions:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;lambda_handler&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;event&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;function_name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;event&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;parameters&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;event&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;parameters&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]}&lt;/span&gt;
+
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;function_name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;TrackOrder&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;track_order&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;parameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;order_id&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;# Same function from Part 7!
+&lt;/span&gt;        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;json&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;dumps&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;result&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;How you deploy multi-agent:&lt;/strong&gt; Bedrock Agents supports supervisor/collaborator patterns natively. Create each specialist as a separate agent with its own Lambda tools, then associate them with a supervisor using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;associate_agent_collaborator&lt;/code&gt;. The supervisor routes automatically based on natural language instructions — one API call, AWS handles delegation and response combination.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;What Bedrock Agents does well:&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Zero orchestration code — configure, don’t build&lt;/li&gt;
+  &lt;li&gt;Multi-agent collaboration built in&lt;/li&gt;
+  &lt;li&gt;Built-in Knowledge Bases, Guardrails, and session memory&lt;/li&gt;
+  &lt;li&gt;Console-first — non-developers can create and test agents&lt;/li&gt;
+  &lt;li&gt;Production scaling and CloudWatch observability out of the box&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;The ceiling (structural, not cosmetic):&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;No prompt caching — every turn pays full input token cost (managed loop doesn’t use Converse API)&lt;/li&gt;
+  &lt;li&gt;No extended thinking, no multimodal input (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;inputText&lt;/code&gt; only)&lt;/li&gt;
+  &lt;li&gt;Tools run sequentially — no parallel calling&lt;/li&gt;
+  &lt;li&gt;Can’t add code-level routing logic (e.g., “if Platinum customer, prioritize billing”)&lt;/li&gt;
+  &lt;li&gt;No single artifact to run locally — logic spread across IAM, Lambda, OpenAPI, Bedrock config&lt;/li&gt;
+  &lt;li&gt;Changing model or tools requires prepare-and-redeploy&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;What if you want the declarative experience back — but without these limitations? That’s the harness.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;option-2-agentcore-harness--declarative-without-the-ceiling&quot;&gt;Option 2: AgentCore Harness — Declarative Without the Ceiling&lt;/h2&gt;
+
+&lt;p&gt;The &lt;a href=&quot;https://aws.amazon.com/blogs/machine-learning/get-to-your-first-working-agent-in-minutes-announcing-new-features-in-amazon-bedrock-agentcore/&quot;&gt;managed harness&lt;/a&gt; brings back the “declare and deploy” experience, but on the AgentCore platform. Three API calls. No Lambda, no Dockerfile, no orchestration code. Powered by Strands under the hood.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Currently in preview: US West (Oregon), US East (N. Virginia), Asia Pacific (Sydney), Europe (Frankfurt).&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;agentcore&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;create_agent&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;order-support&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;us.anthropic.claude-sonnet-4-5-20250929-v1:0&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;instructions&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;You are an order support agent. Help customers track packages.&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;tools&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;track_order&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lookup_order_history&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;response&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;agentcore&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;invoke_agent&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;agent_name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;order-support&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;prompt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;Where is my order ORD-50435?&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;The key differentiator from Bedrock Agents: per-invocation overrides.&lt;/strong&gt; Change the model, tools, or system prompt on any single call without redeploying:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# Swap model for one call — no redeployment&lt;/span&gt;
+agentcore invoke &lt;span class=&quot;nt&quot;&gt;--agent-name&lt;/span&gt; order-support &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;--model-id&lt;/span&gt; anthropic.claude-3-5-haiku-20241022-v1:0 &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;--prompt&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;Where is my order?&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Tools connect via AgentCore Gateway using MCP. If you have existing Lambda functions from Bedrock Agents, wrap them behind a Gateway — the harness consumes them without rewriting Lambda code. Your investment carries forward.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;What the harness does well:&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Three API calls to production — fastest deploy path&lt;/li&gt;
+  &lt;li&gt;Per-invocation overrides — swap model, tools, prompt per call&lt;/li&gt;
+  &lt;li&gt;Multi-model — Bedrock, OpenAI, Gemini, switch mid-session&lt;/li&gt;
+  &lt;li&gt;Built-in code interpreter and shell access&lt;/li&gt;
+  &lt;li&gt;MCP tool discovery via Gateway — reuse existing Lambdas&lt;/li&gt;
+  &lt;li&gt;Custom container images for non-standard environments&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;The ceiling:&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Single agent only&lt;/strong&gt; — no multi-agent routing, no supervisor/collaborator&lt;/li&gt;
+  &lt;li&gt;No built-in Knowledge Bases or Guardrails (connect via Gateway/MCP)&lt;/li&gt;
+  &lt;li&gt;Custom orchestration loops (tree-of-thought, A2A handoffs) need Runtime&lt;/li&gt;
+  &lt;li&gt;In preview — 4 regions, API may change&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The harness is the fastest path for single agents. But our Part 7 system has a supervisor routing to three specialists with human-in-the-loop safety. That’s custom orchestration — config alone can’t express it.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;option-3-agentcore--custom-code--full-control&quot;&gt;Option 3: AgentCore + Custom Code — Full Control&lt;/h2&gt;
+
+&lt;p&gt;This is where our Part 7 system ends up. The supervisor, three specialist agents, and human-in-the-loop routing — deployed on managed infrastructure with the same code we tested locally.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Why not Bedrock Agents (Option 1)?&lt;/strong&gt; Both do multi-agent. The difference:&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt; &lt;/th&gt;
+      &lt;th&gt;Bedrock Agents&lt;/th&gt;
+      &lt;th&gt;AgentCore + Custom&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Routing logic&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Natural language instructions&lt;/td&gt;
+      &lt;td&gt;Your Python code — any logic&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Human-in-the-loop&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Not built-in&lt;/td&gt;
+      &lt;td&gt;Your code (tool thresholds + flags)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Local testing&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Needs deployed agents&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;python agent_app.py&lt;/code&gt; + curl&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Prompt caching&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Not available&lt;/td&gt;
+      &lt;td&gt;Available (direct API)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Framework&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Bedrock Agents only&lt;/td&gt;
+      &lt;td&gt;Strands, LangGraph, CrewAI, anything&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;&lt;strong&gt;How it works:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bedrock_agentcore.runtime&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BedrockAgentCoreApp&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orchestrator&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;SupportOrchestrator&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;app&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;BedrockAgentCoreApp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;orchestrator&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SupportOrchestrator&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+
+&lt;span class=&quot;nd&quot;&gt;@app.entrypoint&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;invoke&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orchestrator&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;handle_request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;customer_id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;customer_id&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;message&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;prompt&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Test locally, deploy with one command:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python agent_app.py  &lt;span class=&quot;c&quot;&gt;# Test on port 8080&lt;/span&gt;
+agentcore deploy &lt;span class=&quot;nt&quot;&gt;--agent-name&lt;/span&gt; ecommerce-support  &lt;span class=&quot;c&quot;&gt;# Deploy to production&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Migrating from Bedrock Agents? The CLI scaffolds the project:&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;agentcore import-agent &lt;span class=&quot;nt&quot;&gt;--agent-id&lt;/span&gt; YOUR_AGENT_ID &lt;span class=&quot;nt&quot;&gt;--target-platform&lt;/span&gt; strands
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;What AgentCore adds on top of your code:&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Auto-scaling, microVM isolation per session, persistent filesystem&lt;/li&gt;
+  &lt;li&gt;IAM roles per agent, CloudWatch traces/metrics/logs&lt;/li&gt;
+  &lt;li&gt;Agents can suspend mid-task and resume (human approval workflows)&lt;/li&gt;
+  &lt;li&gt;Every Bedrock feature — prompt caching (up to 90% savings), extended thinking, multimodal&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;The tradeoff:&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;You write the orchestration code and deployment wrapper&lt;/li&gt;
+  &lt;li&gt;No built-in KB, Guardrails, or console UI&lt;/li&gt;
+  &lt;li&gt;Runtime compute cost on top of model costs&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;how-to-decide&quot;&gt;How to Decide&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;“I don’t want to write orchestration code.”&lt;/strong&gt;
+→ &lt;strong&gt;Bedrock Agents&lt;/strong&gt;. Managed single + multi-agent, built-in KB/Guardrails/console. Tools as Lambda functions.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;“I have a single agent and want fast deploy with multi-model flexibility.”&lt;/strong&gt;
+→ &lt;strong&gt;AgentCore Harness&lt;/strong&gt;. Three API calls, per-invocation overrides, Bedrock + OpenAI + Gemini. &lt;strong&gt;Single agents only.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;“I need custom routing, human-in-the-loop, or local testing for multi-agent.”&lt;/strong&gt;
+→ &lt;strong&gt;AgentCore + Custom Code&lt;/strong&gt;. Bring your Strands orchestrator, test locally, deploy to managed infra.&lt;/p&gt;
+
+&lt;p&gt;You don’t pick once. Start on Harness, stretch with custom containers, graduate to Runtime when the loop itself is the limitation.&lt;/p&gt;
+
+&lt;h2 id=&quot;comparison-table&quot;&gt;Comparison Table&lt;/h2&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt; &lt;/th&gt;
+      &lt;th&gt;Bedrock Agents&lt;/th&gt;
+      &lt;th&gt;AgentCore Harness&lt;/th&gt;
+      &lt;th&gt;AgentCore + Custom&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Best for&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Managed agents, no-code teams&lt;/td&gt;
+      &lt;td&gt;&lt;strong&gt;Single agent&lt;/strong&gt;, fast iteration&lt;/td&gt;
+      &lt;td&gt;Multi-agent at scale&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Tools&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Lambda functions&lt;/td&gt;
+      &lt;td&gt;Gateway/MCP&lt;/td&gt;
+      &lt;td&gt;Your code&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Prompt caching&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Not available&lt;/td&gt;
+      &lt;td&gt;Check docs&lt;/td&gt;
+      &lt;td&gt;Available&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Per-invocation overrides&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Redeploy to change&lt;/td&gt;
+      &lt;td&gt;Model, tools, prompt per call&lt;/td&gt;
+      &lt;td&gt;Full control in code&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Knowledge Base&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Built-in&lt;/td&gt;
+      &lt;td&gt;Connect via Gateway&lt;/td&gt;
+      &lt;td&gt;Integrate yourself&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Guardrails&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Built-in&lt;/td&gt;
+      &lt;td&gt;Configure separately&lt;/td&gt;
+      &lt;td&gt;Integrate yourself&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Multi-model&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Bedrock only&lt;/td&gt;
+      &lt;td&gt;Bedrock, OpenAI, Gemini&lt;/td&gt;
+      &lt;td&gt;Any model&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Multi-agent&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Supervisor/collaborator&lt;/td&gt;
+      &lt;td&gt;&lt;strong&gt;Not supported&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Deploy any orchestration&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Local testing&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Needs deployed agent&lt;/td&gt;
+      &lt;td&gt;N/A — cloud&lt;/td&gt;
+      &lt;td&gt;Run on port 8080&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Migration&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;N/A&lt;/td&gt;
+      &lt;td&gt;Gateway wraps Lambdas&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;agentcore import-agent&lt;/code&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Status&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;GA&lt;/td&gt;
+      &lt;td&gt;Preview (4 regions)&lt;/td&gt;
+      &lt;td&gt;GA&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2 id=&quot;getting-started&quot;&gt;Getting Started&lt;/h2&gt;
+
+&lt;p&gt;If you haven’t built the multi-agent system yet, start with &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-multi-agent-support-system-with-strands-agents-and-bedrock&quot;&gt;Part 7&lt;/a&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;agentic-ai-system/agentcore-deploy
+python agent_app.py  &lt;span class=&quot;c&quot;&gt;# Test locally on port 8080&lt;/span&gt;
+agentcore deploy &lt;span class=&quot;nt&quot;&gt;--agent-name&lt;/span&gt; ecommerce-support  &lt;span class=&quot;c&quot;&gt;# Deploy&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;tear-down&quot;&gt;Tear Down&lt;/h2&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;agentcore delete-runtime &lt;span class=&quot;nt&quot;&gt;--agent-name&lt;/span&gt; ecommerce-support
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;For Bedrock Agents, delete agents and Lambda functions via console or API.&lt;/p&gt;
+
+&lt;h2 id=&quot;whats-next&quot;&gt;What’s Next&lt;/h2&gt;
+
+&lt;p&gt;This is Part 8 of an ongoing series:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Part 1&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock&quot;&gt;Insurance Claim Processor&lt;/a&gt;: Bedrock basics, prompt templates, simple RAG&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 2&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-financial-services-ai-assistant-with-amazon-bedrock&quot;&gt;Financial Services AI Assistant&lt;/a&gt;: benchmarking, circuit breakers, cross-region resilience&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 3&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-customer-feedback-pipeline-with-amazon-bedrock&quot;&gt;Customer Feedback Pipeline&lt;/a&gt;: multimodal data processing&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 4&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch&quot;&gt;RAG Knowledge Base&lt;/a&gt;: vector stores, embeddings, document chunking&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 5&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/optimize-rag-search-with-hybrid-retrieval-and-reranking-on-aws&quot;&gt;Advanced Search &amp;amp; Retrieval&lt;/a&gt;: hybrid search, reranking, query expansion&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 6&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance&quot;&gt;AI Support Assistant&lt;/a&gt;: guardrails, prompt management, conversation flows&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 7&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-multi-agent-support-system-with-strands-agents-and-bedrock&quot;&gt;Multi-Agent Support System&lt;/a&gt;: Strands Agents, multi-agent orchestration&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 8&lt;/strong&gt; — Deploy AI Agents on AWS (this post): Bedrock Agents vs AgentCore&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 9&lt;/strong&gt; — Multi-Tier Model Deployment &amp;amp; Enterprise Integration&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 10&lt;/strong&gt; — AI Safety — Guardrails, PII Protection &amp;amp; Threat Detection&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 11&lt;/strong&gt; — Cost &amp;amp; Latency Optimization for GenAI&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 12&lt;/strong&gt; — AI Governance — Compliance, Fairness &amp;amp; Model Cards&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 13&lt;/strong&gt; — Testing, Evaluation &amp;amp; Troubleshooting GenAI Systems&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Repository: &lt;a href=&quot;https://github.com/srikanthethiraj/agentic-ai-system&quot;&gt;github.com/srikanthethiraj/agentic-ai-system&lt;/a&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;em&gt;I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on &lt;a href=&quot;https://www.linkedin.com/in/srikanthethiraj/&quot;&gt;LinkedIn&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+</description>
+        <pubDate>Sat, 02 May 2026 00:00:00 -0500</pubDate>
+        <link>http://localhost:4000/deploy-ai-agents-on-aws-bedrock-agents-vs-agentcore</link>
+        <guid isPermaLink="true">http://localhost:4000/deploy-ai-agents-on-aws-bedrock-agents-vs-agentcore</guid>
+        
+        <category>AI</category>
+        
+        <category>AWS</category>
+        
+        <category>Python</category>
+        
+        <category>Bedrock</category>
+        
+        <category>Agents</category>
+        
+        <category>AgentCore</category>
+        
+        <category>Strands</category>
+        
+        
+      </item>
     
       <item>
         <title>Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock</title>
@@ -345,6 +732,340 @@ agentcore deploy &lt;span class=&quot;nt&quot;&gt;--agent-name&lt;/span&gt; ecom
       </item>
     
       <item>
+        <title>Build a Multi-Agent Support System with Strands Agents and Amazon Bedrock</title>
+        <description>&lt;p&gt;In Part 6, we built a support assistant with guardrails, intent detection, and conversation history. It worked — but the routing was Python keyword matching. “Charge” goes to billing. “Password” goes to account. Simple, brittle, and wrong the moment a customer says “I got billed double” instead of “I was charged twice.”&lt;/p&gt;
+
+&lt;p&gt;Your e-commerce company gets 200+ support tickets a day. Billing disputes, shipping problems, account issues — often multiple problems in the same message. “I was charged twice for my yoga mat AND I received the wrong color.” That’s two agents, not one. Keyword matching can’t handle it.&lt;/p&gt;
+
+&lt;p&gt;This project replaces manual routing with agents that reason. A supervisor agent reads the customer’s message, understands the intent, and delegates to specialized agents — each with their own tools and expertise. We build it with the Strands Agents SDK — an open-source Python framework where tools are just decorated functions.&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;the-problem&quot;&gt;The Problem&lt;/h2&gt;
+
+&lt;p&gt;A real support team doesn’t have one person who handles everything. It has specialists — someone for billing, someone for shipping, someone for accounts. When a customer calls with multiple issues, the receptionist figures out who to involve and routes accordingly.&lt;/p&gt;
+
+&lt;p&gt;Part 6’s assistant tried to be all three specialists at once. One system prompt, one set of tools, keyword-based routing. It couldn’t handle “I was charged twice AND my package is late” because that’s two specialists, not one.&lt;/p&gt;
+
+&lt;p&gt;You need a system where each specialist is an independent agent with its own tools, and a supervisor that understands natural language well enough to route correctly — even when the customer’s message spans multiple domains.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-pattern&quot;&gt;The Pattern&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;Customer → Supervisor (reasons about routing) → Specialist Agent(s) → Tools → Response&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;The supervisor doesn’t use rules. It uses an LLM to read the message, understand the intent, and decide which agents to involve. The specialist agents don’t share tools — each one has exactly the tools it needs for its domain.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-it-works--three-phases&quot;&gt;How It Works — Three Phases&lt;/h2&gt;
+
+&lt;p&gt;Each phase builds on the previous one’s limitation.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-1-build-a-single-agent-with-strands&quot;&gt;Phase 1: Build a Single Agent with Strands&lt;/h3&gt;
+
+&lt;p&gt;Strands is an open-source Python SDK where tools are just decorated functions. The agent runs in your process, calls tools directly, and you control every step.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Step 1: Define tools as Python functions.&lt;/strong&gt;
+A &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;@tool&lt;/code&gt; decorator turns any function into something the agent can call. The function’s docstring tells the agent what it does — and the function body is the actual execution logic.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nd&quot;&gt;@tool&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;track_order&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;order_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;dict&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;sh&quot;&gt;&quot;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;Track the shipping status of an order.&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&quot;&quot;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;order&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ORDERS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;order_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;order_id&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;order_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+        &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;status&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;order&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;status&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+        &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;carrier&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;order&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;shipping_carrier&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+        &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;tracking_number&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;order&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;tracking_number&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+        &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;estimated_delivery&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;order&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;estimated_delivery&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This is a plain Python function. It works locally, it’s easy to test with mocks, and — as we’ll see in Part 8 — the same function can be deployed as a Lambda handler or inside an AgentCore container without rewriting it.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Step 2: Create the agent with a system prompt and tools.&lt;/strong&gt;
+One &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Agent()&lt;/code&gt; call wires everything together — the model, the persona, and the list of tool functions.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;strands&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Agent&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;strands.models&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BedrockModel&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;agent&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Agent&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;BedrockModel&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;model_id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;us.anthropic.claude-sonnet-4-20250514-v1:0&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;system_prompt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;You are an order support agent. Use tools to look up real data.&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;tools&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;track_order&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lookup_order_history&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cancel_order&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;Step 3: The agent handles the entire conversation in one call.&lt;/strong&gt;
+You pass the customer’s message. The agent reasons about it, decides which tool to call, executes the function directly in your Python process, reads the result, and writes the response — all in a single call.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;result&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;agent&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;Customer CUST-1001 asks: Where is my order ORD-50435?&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Here’s what happens behind the scenes. The agent repeats a decision cycle: read the message → decide if a tool is needed → call the tool → read the result → decide if more tools are needed → respond. This cycle runs entirely in your Python process — no API round-trips for tool execution.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Agent reasoning:
+  → Reads query: customer wants order tracking
+  → Picks tool: track_order(order_id=&quot;ORD-50435&quot;)
+  → Calls the Python function directly — gets result instantly
+  → Formats response from the data
+
+Agent: Your order ORD-50435 is currently in transit with FedEx.
+       Tracking number: 794644790132. Estimated delivery: April 23rd.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;If the agent needs two tools (track the order AND check payment), it calls both in sequence automatically — one &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;agent()&lt;/code&gt; call, no extra round-trips.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;What single agents do well:&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Full control over the decision cycle — add custom logic between tool calls&lt;/li&gt;
+  &lt;li&gt;Tools are Python functions — test with mocks, run offline, iterate fast&lt;/li&gt;
+  &lt;li&gt;Open-source — inspect, extend, contribute&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;The limitation:&lt;/strong&gt;
+Single agents can’t handle “I was charged twice AND my package is late.” That’s two domains, two tool sets. One agent trying to do everything gives worse answers than focused specialists. You need multiple agents collaborating.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-2-multi-agent-orchestration--the-supervisor-pattern&quot;&gt;Phase 2: Multi-Agent Orchestration — The Supervisor Pattern&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;Step 1: Define three specialist agents, each with their own tools.&lt;/strong&gt;
+Each agent has a focused system prompt and only the tools it needs. The order agent can’t process refunds. The billing agent can’t track packages. This separation means each agent is an expert in its domain.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;order_agent&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Agent&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;system_prompt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;You are the Order Support Agent...&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;tools&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;track_order&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lookup_order_history&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cancel_order&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;billing_agent&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Agent&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;system_prompt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;You are the Billing Support Agent...&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;tools&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;check_payment_status&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;process_refund&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;account_agent&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Agent&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;system_prompt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;You are the Account Support Agent...&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;tools&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lookup_customer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;reset_password&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;update_account_info&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;Step 2: Create a supervisor agent that routes requests.&lt;/strong&gt;
+The supervisor doesn’t have domain tools. It has one job: read the customer’s message, figure out which specialists to involve, and return a routing decision as JSON.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;supervisor&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Agent&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;system_prompt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;Analyze the customer&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;s message and route to specialists:
+    ORDER AGENT — for: tracking, shipping, cancellations, returns, wrong items
+    BILLING AGENT — for: payments, charges, refunds, duplicate charges
+    ACCOUNT AGENT — for: login, password, email/phone changes, app issues
+
+    Return JSON: {&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;agents&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;: [...], &lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;reasoning&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;: &lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;...&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;, &lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;needs_human_review&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;: true/false}&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;tools&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lookup_customer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;How does the supervisor know what to do? It reads the customer’s message and matches it against the agent descriptions in its system prompt. “I got billed double” → the word “billed” matches the billing agent’s description. “My package vanished” → “package” matches the order agent. The LLM understands meaning, not keywords — that’s the fundamental difference from Article 6’s Python keyword matching.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Step 3: The orchestrator ties it all together.&lt;/strong&gt;
+When a customer message arrives, the orchestrator sends it to the supervisor first. The supervisor returns which agents to involve. The orchestrator dispatches to each specialist in sequence, collects their responses, and checks for human review flags.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;# Supervisor analyzes: &quot;I was charged twice AND received the wrong color&quot;
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;routing&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;supervisor&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;message&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;# → {&quot;agents&quot;: [&quot;billing&quot;, &quot;order&quot;], ...}
+&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;# Dispatch to each specialist
+&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;agent_name&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;routing&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;agents&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]:&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;response&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;agents&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;agent_name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;](&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;message&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;# Each agent uses its own tools
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Supervisor: Routes to [billing, order] — &quot;Two issues: duplicate charge + wrong item&quot;
+
+Billing Agent: Found duplicate charge of $167.76. Refund submitted
+               for manager approval (over $50 threshold).
+
+Order Agent: Confirmed wrong item flag on ORD-50398. Escalated to
+             fulfillment team for correct color shipment.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Both agents worked independently on their part of the problem, using their own tools and domain knowledge.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;What multi-agent orchestration does well:&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Handles complex, multi-issue requests that single agents can’t&lt;/li&gt;
+  &lt;li&gt;Each specialist is focused — better answers than one agent trying to do everything&lt;/li&gt;
+  &lt;li&gt;Supervisor reasoning is transparent — you can audit why each agent was chosen&lt;/li&gt;
+  &lt;li&gt;Agents are independent — add a new specialist without changing existing ones&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;The limitation:&lt;/strong&gt;
+The agents can do anything their tools allow — including processing a $500 refund without asking anyone. Some actions need human approval.&lt;/p&gt;
+
+&lt;h3 id=&quot;phase-3-human-in-the-loop--safety-for-sensitive-actions&quot;&gt;Phase 3: Human-in-the-Loop — Safety for Sensitive Actions&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;Step 1: Tools enforce business rules.&lt;/strong&gt;
+The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;process_refund&lt;/code&gt; tool has a built-in threshold. Amounts over $50 return a “pending_approval” status instead of processing immediately. The tool doesn’t need the agent’s permission — it’s a hard business rule in the code.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nd&quot;&gt;@tool&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;process_refund&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;customer_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;order_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;amount&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;float&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;reason&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;dict&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;sh&quot;&gt;&quot;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;Process a refund. Amounts over $50 require manager approval.&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&quot;&quot;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;amount&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;status&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;pending_approval&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;message&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;sa&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;Refund of $&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;amount&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; requires manager approval (threshold: $50).&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;approval_required&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;status&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;approved&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;amount&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;amount&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;...}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;Step 2: The supervisor independently flags tickets for human review.&lt;/strong&gt;
+The supervisor’s routing decision includes a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;needs_human_review&lt;/code&gt; field. It flags based on refund amounts, customer sentiment, and escalation phrases — independent of what the tools do. Two layers of safety: the tool blocks the action, and the supervisor flags the ticket.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Step 3: The orchestrator checks both layers.&lt;/strong&gt;
+After all agents respond, the orchestrator checks the supervisor’s flag AND scans agent responses for pending approvals. If either triggers, the ticket is marked for human review.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Customer: I need a full refund of $167.76.
+
+Billing Agent: Refund submitted → PENDING APPROVAL (exceeds $50 threshold)
+Supervisor: ⚠️ FLAGGED FOR HUMAN REVIEW
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The customer gets a response explaining the refund is pending approval. The human agent gets a ticket with the full context — customer history, agent reasoning, and the specific action that needs approval.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;What human-in-the-loop does well:&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Two independent safety layers — tool-level rules AND supervisor-level flags&lt;/li&gt;
+  &lt;li&gt;Business rules are in code, not prompts — the $50 threshold can’t be prompt-injected away&lt;/li&gt;
+  &lt;li&gt;Human agents get full context — they don’t start from scratch&lt;/li&gt;
+  &lt;li&gt;Configurable thresholds — change the dollar amount without retraining anything&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;real-results--8-tickets-end-to-end&quot;&gt;Real Results — 8 Tickets End-to-End&lt;/h2&gt;
+
+&lt;p&gt;We ran all 8 sample tickets through the full system — supervisor routing, sub-agent execution, tool calls, and response generation:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Ticket     Agents              Review    Latency
+TKT-001    order                   No    10601ms
+TKT-002    billing            ⚠️ YES    10902ms
+TKT-003    account                 No    12471ms
+TKT-004    billing,order      ⚠️ YES    22593ms
+TKT-005    billing,order      ⚠️ YES    23603ms
+TKT-006    order                   No    10633ms
+TKT-007    account                 No    12405ms
+TKT-008    account                 No    14047ms
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Every ticket routed correctly. Multi-issue tickets (TKT-004, TKT-005) went to multiple agents. Money-related issues got flagged for human review. The supervisor considered customer loyalty tier — Platinum customers with billing issues got higher priority.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-changed-from-part-6&quot;&gt;What Changed from Part 6&lt;/h2&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Concept&lt;/th&gt;
+      &lt;th&gt;Part 6 (AI Support Assistant)&lt;/th&gt;
+      &lt;th&gt;Part 7 (This Project)&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Routing&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Python keyword matching&lt;/td&gt;
+      &lt;td&gt;LLM-based supervisor reasoning&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Agents&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;One agent does everything&lt;/td&gt;
+      &lt;td&gt;Three specialists + supervisor&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Tools&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Shared across all intents&lt;/td&gt;
+      &lt;td&gt;Domain-specific per agent&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Multi-issue&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Can’t handle&lt;/td&gt;
+      &lt;td&gt;Supervisor delegates to multiple agents&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Framework&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;Raw Bedrock Converse API&lt;/td&gt;
+      &lt;td&gt;Strands Agents SDK&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2 id=&quot;getting-started&quot;&gt;Getting Started&lt;/h2&gt;
+
+&lt;p&gt;Prerequisites: Python 3.10+, AWS CLI configured, Bedrock model access for Claude Sonnet 4.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;git clone https://github.com/srikanthethiraj/agentic-ai-system.git
+&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;agentic-ai-system
+python3 &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; venv venv
+&lt;span class=&quot;nb&quot;&gt;source &lt;/span&gt;venv/bin/activate
+pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-r&lt;/span&gt; requirements.txt
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Run the demo:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python demo.py &lt;span class=&quot;nt&quot;&gt;--region&lt;/span&gt; us-east-1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Run all sample tickets end-to-end:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python run_all_tickets.py
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Results are saved to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;output/full_results.json&lt;/code&gt; with every routing decision, agent response, and tool call.&lt;/p&gt;
+
+&lt;h2 id=&quot;tear-down&quot;&gt;Tear Down&lt;/h2&gt;
+
+&lt;p&gt;No infrastructure to tear down — the demo runs locally against Bedrock APIs.&lt;/p&gt;
+
+&lt;h2 id=&quot;whats-next&quot;&gt;What’s Next&lt;/h2&gt;
+
+&lt;p&gt;The multi-agent system works on your machine. But how do you take it to production? In Part 8, we deploy the same system three ways on AWS — Bedrock Agents (fully managed), AgentCore Harness (config-only), and AgentCore with custom code (full control). Same tools, same logic, three deployment paths.&lt;/p&gt;
+
+&lt;p&gt;This is Part 7 of an ongoing series:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Part 1&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-an-ai-powered-insurance-claim-processor-with-amazon-bedrock&quot;&gt;Insurance Claim Processor&lt;/a&gt;: Bedrock basics, prompt templates, simple RAG&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 2&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-financial-services-ai-assistant-with-amazon-bedrock&quot;&gt;Financial Services AI Assistant&lt;/a&gt;: benchmarking, circuit breakers, cross-region resilience&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 3&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-customer-feedback-pipeline-with-amazon-bedrock&quot;&gt;Customer Feedback Pipeline&lt;/a&gt;: multimodal data processing&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 4&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-a-rag-knowledge-base-with-amazon-bedrock-and-opensearch&quot;&gt;RAG Knowledge Base&lt;/a&gt;: vector stores, embeddings, document chunking&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 5&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/optimize-rag-search-with-hybrid-retrieval-and-reranking-on-aws&quot;&gt;Advanced Search &amp;amp; Retrieval&lt;/a&gt;: hybrid search, reranking, query expansion&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 6&lt;/strong&gt; — &lt;a href=&quot;https://blog.srikanthethiraj.com/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance&quot;&gt;AI Support Assistant with Governance&lt;/a&gt;: guardrails, prompt management, conversation flows&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 7&lt;/strong&gt; — Multi-Agent Support System (this post): Strands Agents, multi-agent orchestration&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 8&lt;/strong&gt; — Deploy AI Agents on AWS: Bedrock Agents vs AgentCore&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 9&lt;/strong&gt; — Multi-Tier Model Deployment &amp;amp; Enterprise Integration&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 10&lt;/strong&gt; — AI Safety — Guardrails, PII Protection &amp;amp; Threat Detection&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 11&lt;/strong&gt; — Cost &amp;amp; Latency Optimization for GenAI&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 12&lt;/strong&gt; — AI Governance — Compliance, Fairness &amp;amp; Model Cards&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Part 13&lt;/strong&gt; — Testing, Evaluation &amp;amp; Troubleshooting GenAI Systems&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Repository: &lt;a href=&quot;https://github.com/srikanthethiraj/agentic-ai-system&quot;&gt;github.com/srikanthethiraj/agentic-ai-system&lt;/a&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;em&gt;I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on &lt;a href=&quot;https://www.linkedin.com/in/srikanthethiraj/&quot;&gt;LinkedIn&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+</description>
+        <pubDate>Wed, 29 Apr 2026 00:00:00 -0500</pubDate>
+        <link>http://localhost:4000/build-a-multi-agent-support-system-with-strands-agents-and-bedrock</link>
+        <guid isPermaLink="true">http://localhost:4000/build-a-multi-agent-support-system-with-strands-agents-and-bedrock</guid>
+        
+        <category>AI</category>
+        
+        <category>AWS</category>
+        
+        <category>Python</category>
+        
+        <category>Bedrock</category>
+        
+        <category>Strands</category>
+        
+        <category>Agents</category>
+        
+        
+      </item>
+    
+      <item>
         <title>Build an AI Support Assistant with Bedrock Guardrails and Governance</title>
         <description>&lt;p&gt;In Part 5, we optimized RAG search with hybrid retrieval, reranking, and evaluation metrics. The search is smart. But a smart search engine isn’t a support assistant. It doesn’t know who it is, what it should refuse to answer, or when to hand off to a human.&lt;/p&gt;
 
@@ -586,7 +1307,7 @@ pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;n
 
 &lt;p&gt;&lt;em&gt;I’m Srikanth — a cloud engineer at AWS based in Austin, Texas. I learn by building, and I write about what I build. Follow along on this blog or connect with me on &lt;a href=&quot;https://www.linkedin.com/in/srikanthethiraj/&quot;&gt;LinkedIn&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
 </description>
-        <pubDate>Tue, 28 Apr 2026 00:00:00 -0500</pubDate>
+        <pubDate>Sun, 26 Apr 2026 00:00:00 -0500</pubDate>
         <link>http://localhost:4000/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance</link>
         <guid isPermaLink="true">http://localhost:4000/build-an-ai-support-assistant-with-bedrock-guardrails-and-governance</guid>
         
